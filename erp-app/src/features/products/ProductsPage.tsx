@@ -1,8 +1,9 @@
 import { Pencil, Plus, Trash2 } from "lucide-react"
 import type { Product } from "./types"
+import {useState} from "react";
 
 const ProductsPage = () => {
-    const products: Product[] = [
+    const [products, setProducts] = useState<Product[]>([
         {
             id: "1",
             name: "Pepsi Max 500ml",
@@ -19,7 +20,15 @@ const ProductsPage = () => {
             quantity: 12,
             expirationDate: "15/08/2026",
         },
-    ]
+    ])
+
+    const handleDelete = (id: string) => {
+        setProducts((prevState) => {
+            return prevState.filter((product) => {
+                return product.id !== id
+            })
+        })
+    }
 
     return (
         <section className="p-6">
@@ -110,6 +119,7 @@ const ProductsPage = () => {
                                     </button>
 
                                     <button
+                                        onClick={()=>handleDelete(product.id)}
                                         type="button"
                                         aria-label={`Delete ${product.name}`}
                                         className="rounded-lg p-2 text-gray-500 hover:bg-red-100 hover:text-red-600"
