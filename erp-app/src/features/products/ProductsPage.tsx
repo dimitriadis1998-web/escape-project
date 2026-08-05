@@ -18,7 +18,7 @@ const ProductsPage = () => {
             category: "Drinks",
             price: 1.2,
             quantity: 24,
-            expirationDate: "10/08/2026",
+            expirationDate: "2026-08-10",
         },
         {
             id: "2",
@@ -26,13 +26,36 @@ const ProductsPage = () => {
             category: "Snacks",
             price: 1.5,
             quantity: 12,
-            expirationDate: "15/08/2026",
+            expirationDate: "2026-08-15",
         },
     ])
 
     const [isFormOpen, setIsFormOpen] = useState(false)
 
     const [formValues, setFormValues] = useState(initialFormValues)
+
+    const [editingProductId, setEditingProductId] =
+        useState<string | null>(null)
+
+    const handleOpenAddForm = () => {
+        setEditingProductId(null)
+        setFormValues(initialFormValues)
+        setIsFormOpen(true)
+    }
+
+    const handleEditClick = (product: Product) => {
+        setEditingProductId(product.id)
+
+        setFormValues({
+            name: product.name,
+            category: product.category,
+            price: product.price.toString(),
+            quantity: product.quantity.toString(),
+            expirationDate: product.expirationDate,
+        })
+
+        setIsFormOpen(true)
+    }
 
     const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
         const { name, value } = event.target
@@ -45,11 +68,16 @@ const ProductsPage = () => {
         })
     }
 
-    const handleAddProduct = (event: FormEvent<HTMLFormElement>) => {
+    const handleCloseForm = () => {
+        setFormValues(initialFormValues)
+        setEditingProductId(null)
+        setIsFormOpen(false)
+    }
+
+    const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault()
 
-        const newProduct: Product = {
-            id: crypto.randomUUID(),
+        const productValues = {
             name: formValues.name,
             category: formValues.category,
             price: Number(formValues.price),
@@ -57,12 +85,31 @@ const ProductsPage = () => {
             expirationDate: formValues.expirationDate,
         }
 
-        setProducts((prevState) => {
-            return [...prevState, newProduct]
-        })
+        if (editingProductId !== null) {
+            setProducts((prevState) => {
+                return prevState.map((product) => {
+                    if (product.id === editingProductId) {
+                        return {
+                            ...product,
+                            ...productValues,
+                        }
+                    }
 
-        setFormValues(initialFormValues)
-        setIsFormOpen(false)
+                    return product
+                })
+            })
+        } else {
+            const newProduct: Product = {
+                id: crypto.randomUUID(),
+                ...productValues,
+            }
+
+            setProducts((prevState) => {
+                return [...prevState, newProduct]
+            })
+        }
+
+        handleCloseForm()
     }
 
     const handleDelete = (id: string) => {
@@ -88,7 +135,7 @@ const ProductsPage = () => {
 
                 <button
                     type="button"
-                    onClick={() => setIsFormOpen(true)}
+                    onClick={handleOpenAddForm}
                     className="flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-white hover:bg-purple-700"
                 >
                     <Plus className="h-5 w-5" />
@@ -98,11 +145,13 @@ const ProductsPage = () => {
 
             {isFormOpen && (
                 <form
-                    onSubmit={handleAddProduct}
+                    onSubmit={handleSubmit}
                     className="mb-6 rounded-xl border border-gray-200 bg-white p-6"
                 >
                     <h2 className="mb-4 text-lg font-bold text-gray-800">
-                        Add New Product
+                        {editingProductId !== null
+                            ? "Edit Product"
+                            : "Add New Product"}
                     </h2>
 
                     <div className="grid gap-4 md:grid-cols-2">
@@ -192,10 +241,7 @@ const ProductsPage = () => {
                     <div className="mt-6 flex justify-end gap-3">
                         <button
                             type="button"
-                            onClick={() => {
-                                setFormValues(initialFormValues)
-                                setIsFormOpen(false)
-                            }}
+                            onClick={handleCloseForm}
                             className="rounded-lg border border-gray-300 px-4 py-2 text-gray-700 hover:bg-gray-100"
                         >
                             Cancel
@@ -205,8 +251,15 @@ const ProductsPage = () => {
                             type="submit"
                             className="flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-white hover:bg-purple-700"
                         >
-                            <Plus className="h-5 w-5" />
-                            <span>Save Product</span>
+                            {editingProductId === null && (
+                                <Plus className="h-5 w-5" />
+                            )}
+
+                            <span>
+                                {editingProductId !== null
+                                    ? "Update Product"
+                                    : "Save Product"}
+                            </span>
                         </button>
                     </div>
                 </form>
@@ -267,6 +320,9 @@ const ProductsPage = () => {
                                 <div className="flex items-center gap-2">
                                     <button
                                         type="button"
+                                        onClick={() =>
+                                            handleEditClick(product)
+                                        }
                                         aria-label={`Edit ${product.name}`}
                                         className="rounded-lg p-2 text-gray-500 hover:bg-purple-100 hover:text-purple-700"
                                     >
