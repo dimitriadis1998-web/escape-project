@@ -1,6 +1,18 @@
 import { Pencil, Plus, Trash2 } from "lucide-react"
-import { useState, type ChangeEvent, type FormEvent } from "react"
+import {
+    useState,
+    type ChangeEvent,
+    type Dispatch,
+    type FormEvent,
+    type SetStateAction,
+} from "react"
+
 import type { Product } from "./types"
+
+type ProductsPageProps = {
+    products: Product[]
+    setProducts: Dispatch<SetStateAction<Product[]>>
+}
 
 const initialFormValues = {
     name: "",
@@ -10,29 +22,14 @@ const initialFormValues = {
     expirationDate: "",
 }
 
-const ProductsPage = () => {
-    const [products, setProducts] = useState<Product[]>([
-        {
-            id: "1",
-            name: "Pepsi Max 500ml",
-            category: "Drinks",
-            price: 1.2,
-            quantity: 24,
-            expirationDate: "2026-08-10",
-        },
-        {
-            id: "2",
-            name: "Molto Bueno",
-            category: "Snacks",
-            price: 1.5,
-            quantity: 12,
-            expirationDate: "2026-08-15",
-        },
-    ])
-
+const ProductsPage = ({
+                          products,
+                          setProducts,
+                      }: ProductsPageProps) => {
     const [isFormOpen, setIsFormOpen] = useState(false)
 
-    const [formValues, setFormValues] = useState(initialFormValues)
+    const [formValues, setFormValues] =
+        useState(initialFormValues)
 
     const [editingProductId, setEditingProductId] =
         useState<string | null>(null)
@@ -57,7 +54,9 @@ const ProductsPage = () => {
         setIsFormOpen(true)
     }
 
-    const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const handleChange = (
+        event: ChangeEvent<HTMLInputElement>
+    ) => {
         const { name, value } = event.target
 
         setFormValues((prevState) => {
@@ -74,7 +73,9 @@ const ProductsPage = () => {
         setIsFormOpen(false)
     }
 
-    const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    const handleSubmit = (
+        event: FormEvent<HTMLFormElement>
+    ) => {
         event.preventDefault()
 
         const productValues = {
@@ -272,18 +273,23 @@ const ProductsPage = () => {
                         <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-600">
                             Name
                         </th>
+
                         <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-600">
                             Category
                         </th>
+
                         <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-600">
                             Price
                         </th>
+
                         <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-600">
                             Quantity
                         </th>
+
                         <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-600">
                             Expiration
                         </th>
+
                         <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-600">
                             Actions
                         </th>
@@ -291,58 +297,74 @@ const ProductsPage = () => {
                     </thead>
 
                     <tbody>
-                    {products.map((product) => (
-                        <tr
-                            key={product.id}
-                            className="border-t border-gray-200"
-                        >
-                            <td className="px-4 py-4 text-sm text-gray-700">
-                                {product.name}
-                            </td>
-
-                            <td className="px-4 py-4 text-sm text-gray-700">
-                                {product.category}
-                            </td>
-
-                            <td className="px-4 py-4 text-sm text-gray-700">
-                                €{product.price.toFixed(2)}
-                            </td>
-
-                            <td className="px-4 py-4 text-sm text-gray-700">
-                                {product.quantity}
-                            </td>
-
-                            <td className="px-4 py-4 text-sm text-gray-700">
-                                {product.expirationDate}
-                            </td>
-
-                            <td className="px-4 py-4 text-sm text-gray-700">
-                                <div className="flex items-center gap-2">
-                                    <button
-                                        type="button"
-                                        onClick={() =>
-                                            handleEditClick(product)
-                                        }
-                                        aria-label={`Edit ${product.name}`}
-                                        className="rounded-lg p-2 text-gray-500 hover:bg-purple-100 hover:text-purple-700"
-                                    >
-                                        <Pencil className="h-4 w-4" />
-                                    </button>
-
-                                    <button
-                                        type="button"
-                                        onClick={() =>
-                                            handleDelete(product.id)
-                                        }
-                                        aria-label={`Delete ${product.name}`}
-                                        className="rounded-lg p-2 text-gray-500 hover:bg-red-100 hover:text-red-600"
-                                    >
-                                        <Trash2 className="h-4 w-4" />
-                                    </button>
-                                </div>
+                    {products.length === 0 ? (
+                        <tr>
+                            <td
+                                colSpan={6}
+                                className="px-4 py-8 text-center text-sm text-gray-500"
+                            >
+                                No products found
                             </td>
                         </tr>
-                    ))}
+                    ) : (
+                        products.map((product) => (
+                            <tr
+                                key={product.id}
+                                className="border-t border-gray-200"
+                            >
+                                <td className="px-4 py-4 text-sm text-gray-700">
+                                    {product.name}
+                                </td>
+
+                                <td className="px-4 py-4 text-sm text-gray-700">
+                                    {product.category}
+                                </td>
+
+                                <td className="px-4 py-4 text-sm text-gray-700">
+                                    €
+                                    {product.price.toFixed(2)}
+                                </td>
+
+                                <td className="px-4 py-4 text-sm text-gray-700">
+                                    {product.quantity}
+                                </td>
+
+                                <td className="px-4 py-4 text-sm text-gray-700">
+                                    {product.expirationDate}
+                                </td>
+
+                                <td className="px-4 py-4 text-sm text-gray-700">
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={() =>
+                                                handleEditClick(
+                                                    product
+                                                )
+                                            }
+                                            aria-label={`Edit ${product.name}`}
+                                            className="rounded-lg p-2 text-gray-500 hover:bg-purple-100 hover:text-purple-700"
+                                        >
+                                            <Pencil className="h-4 w-4" />
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            onClick={() =>
+                                                handleDelete(
+                                                    product.id
+                                                )
+                                            }
+                                            aria-label={`Delete ${product.name}`}
+                                            className="rounded-lg p-2 text-gray-500 hover:bg-red-100 hover:text-red-600"
+                                        >
+                                            <Trash2 className="h-4 w-4" />
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        ))
+                    )}
                     </tbody>
                 </table>
             </div>
