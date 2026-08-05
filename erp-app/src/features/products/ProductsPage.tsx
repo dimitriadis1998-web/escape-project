@@ -1,6 +1,14 @@
 import { Pencil, Plus, Trash2 } from "lucide-react"
+import { useState, type ChangeEvent, type FormEvent } from "react"
 import type { Product } from "./types"
-import {useState} from "react";
+
+const initialFormValues = {
+    name: "",
+    category: "",
+    price: "",
+    quantity: "",
+    expirationDate: "",
+}
 
 const ProductsPage = () => {
     const [products, setProducts] = useState<Product[]>([
@@ -21,6 +29,41 @@ const ProductsPage = () => {
             expirationDate: "15/08/2026",
         },
     ])
+
+    const [isFormOpen, setIsFormOpen] = useState(false)
+
+    const [formValues, setFormValues] = useState(initialFormValues)
+
+    const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
+        const { name, value } = event.target
+
+        setFormValues((prevState) => {
+            return {
+                ...prevState,
+                [name]: value,
+            }
+        })
+    }
+
+    const handleAddProduct = (event: FormEvent<HTMLFormElement>) => {
+        event.preventDefault()
+
+        const newProduct: Product = {
+            id: crypto.randomUUID(),
+            name: formValues.name,
+            category: formValues.category,
+            price: Number(formValues.price),
+            quantity: Number(formValues.quantity),
+            expirationDate: formValues.expirationDate,
+        }
+
+        setProducts((prevState) => {
+            return [...prevState, newProduct]
+        })
+
+        setFormValues(initialFormValues)
+        setIsFormOpen(false)
+    }
 
     const handleDelete = (id: string) => {
         setProducts((prevState) => {
@@ -45,12 +88,129 @@ const ProductsPage = () => {
 
                 <button
                     type="button"
+                    onClick={() => setIsFormOpen(true)}
                     className="flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-white hover:bg-purple-700"
                 >
                     <Plus className="h-5 w-5" />
                     <span>Add Product</span>
                 </button>
             </div>
+
+            {isFormOpen && (
+                <form
+                    onSubmit={handleAddProduct}
+                    className="mb-6 rounded-xl border border-gray-200 bg-white p-6"
+                >
+                    <h2 className="mb-4 text-lg font-bold text-gray-800">
+                        Add New Product
+                    </h2>
+
+                    <div className="grid gap-4 md:grid-cols-2">
+                        <label className="flex flex-col gap-1">
+                            <span className="text-sm font-medium text-gray-700">
+                                Name
+                            </span>
+
+                            <input
+                                type="text"
+                                name="name"
+                                value={formValues.name}
+                                onChange={handleChange}
+                                required
+                                placeholder="Product name"
+                                className="rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-purple-500"
+                            />
+                        </label>
+
+                        <label className="flex flex-col gap-1">
+                            <span className="text-sm font-medium text-gray-700">
+                                Category
+                            </span>
+
+                            <input
+                                type="text"
+                                name="category"
+                                value={formValues.category}
+                                onChange={handleChange}
+                                required
+                                placeholder="Product category"
+                                className="rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-purple-500"
+                            />
+                        </label>
+
+                        <label className="flex flex-col gap-1">
+                            <span className="text-sm font-medium text-gray-700">
+                                Price
+                            </span>
+
+                            <input
+                                type="number"
+                                name="price"
+                                value={formValues.price}
+                                onChange={handleChange}
+                                required
+                                min="0"
+                                step="0.01"
+                                placeholder="0.00"
+                                className="rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-purple-500"
+                            />
+                        </label>
+
+                        <label className="flex flex-col gap-1">
+                            <span className="text-sm font-medium text-gray-700">
+                                Quantity
+                            </span>
+
+                            <input
+                                type="number"
+                                name="quantity"
+                                value={formValues.quantity}
+                                onChange={handleChange}
+                                required
+                                min="0"
+                                placeholder="0"
+                                className="rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-purple-500"
+                            />
+                        </label>
+
+                        <label className="flex flex-col gap-1">
+                            <span className="text-sm font-medium text-gray-700">
+                                Expiration date
+                            </span>
+
+                            <input
+                                type="date"
+                                name="expirationDate"
+                                value={formValues.expirationDate}
+                                onChange={handleChange}
+                                required
+                                className="rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-purple-500"
+                            />
+                        </label>
+                    </div>
+
+                    <div className="mt-6 flex justify-end gap-3">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setFormValues(initialFormValues)
+                                setIsFormOpen(false)
+                            }}
+                            className="rounded-lg border border-gray-300 px-4 py-2 text-gray-700 hover:bg-gray-100"
+                        >
+                            Cancel
+                        </button>
+
+                        <button
+                            type="submit"
+                            className="flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-white hover:bg-purple-700"
+                        >
+                            <Plus className="h-5 w-5" />
+                            <span>Save Product</span>
+                        </button>
+                    </div>
+                </form>
+            )}
 
             <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
                 <table className="w-full">
@@ -59,23 +219,18 @@ const ProductsPage = () => {
                         <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-600">
                             Name
                         </th>
-
                         <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-600">
                             Category
                         </th>
-
                         <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-600">
                             Price
                         </th>
-
                         <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-600">
                             Quantity
                         </th>
-
                         <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-600">
                             Expiration
                         </th>
-
                         <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-600">
                             Actions
                         </th>
@@ -119,8 +274,10 @@ const ProductsPage = () => {
                                     </button>
 
                                     <button
-                                        onClick={()=>handleDelete(product.id)}
                                         type="button"
+                                        onClick={() =>
+                                            handleDelete(product.id)
+                                        }
                                         aria-label={`Delete ${product.name}`}
                                         className="rounded-lg p-2 text-gray-500 hover:bg-red-100 hover:text-red-600"
                                     >
