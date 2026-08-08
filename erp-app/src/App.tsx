@@ -39,7 +39,8 @@ function App() {
             <Routes>
                 <Route
                     path="/"
-                    element={<DashboardPage />}
+                    element={<DashboardPage products={products}
+                    />}
                 />
 
                 <Route
