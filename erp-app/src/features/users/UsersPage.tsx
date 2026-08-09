@@ -1,6 +1,10 @@
-import { useState } from "react"
+import {
+    useState,
+    type ChangeEvent,
+    type FormEvent,
+} from "react"
 import { Plus, Trash2 } from "lucide-react"
-import type { User } from "./types"
+import type { User, UserFormValues } from "./types"
 
 const initialUsers: User[] = [
     {
@@ -19,12 +23,81 @@ const initialUsers: User[] = [
     },
 ]
 
+const initialFormValues: UserFormValues = {
+    name: "",
+    email: "",
+    role: "Employee",
+    active: true,
+}
+
 const UsersPage = () => {
     const [users, setUsers] =
         useState<User[]>(initialUsers)
 
     const [isFormOpen, setIsFormOpen] =
         useState(false)
+
+    const [formValues, setFormValues] =
+        useState<UserFormValues>(initialFormValues)
+
+    const handleFormChange = (
+        event: ChangeEvent<
+            HTMLInputElement | HTMLSelectElement
+        >
+    ) => {
+        const { name, value } = event.target
+
+        setFormValues((prevValues) => {
+            return {
+                ...prevValues,
+                [name]: value,
+            }
+        })
+    }
+
+    const handleActiveChange = (
+        event: ChangeEvent<HTMLInputElement>
+    ) => {
+        setFormValues((prevValues) => {
+            return {
+                ...prevValues,
+                active: event.target.checked,
+            }
+        })
+    }
+
+    const handleAddUser = (
+        event: FormEvent<HTMLFormElement>
+    ) => {
+        event.preventDefault()
+
+        if (
+            !formValues.name.trim() ||
+            !formValues.email.trim()
+        ) {
+            return
+        }
+
+        const newUser: User = {
+            id: crypto.randomUUID(),
+            name: formValues.name.trim(),
+            email: formValues.email.trim(),
+            role: formValues.role,
+            active: formValues.active,
+        }
+
+        setUsers((prevUsers) => {
+            return [...prevUsers, newUser]
+        })
+
+        setFormValues(initialFormValues)
+        setIsFormOpen(false)
+    }
+
+    const handleCancel = () => {
+        setFormValues(initialFormValues)
+        setIsFormOpen(false)
+    }
 
     const handleDeleteUser = (id: string) => {
         setUsers((prevUsers) => {
@@ -58,9 +131,91 @@ const UsersPage = () => {
             </div>
 
             {isFormOpen && (
-                <p className="mb-6 rounded-xl border border-purple-200 bg-purple-50 p-4 text-sm text-purple-700">
-                    User form will appear here
-                </p>
+                <form
+                    onSubmit={handleAddUser}
+                    className="mb-6 rounded-xl border border-purple-200 bg-purple-50 p-4"
+                >
+                    <h2 className="mb-4 text-lg font-bold text-gray-800">
+                        Add New User
+                    </h2>
+
+                    <div className="grid gap-4 md:grid-cols-2">
+                        <label className="flex flex-col gap-1 text-sm font-medium text-gray-700">
+                            <span>Name</span>
+
+                            <input
+                                required
+                                type="text"
+                                name="name"
+                                value={formValues.name}
+                                onChange={handleFormChange}
+                                placeholder="Username"
+                                className="rounded-lg border border-gray-300 bg-white px-3 py-2 outline-none focus:border-purple-500"
+                            />
+                        </label>
+
+                        <label className="flex flex-col gap-1 text-sm font-medium text-gray-700">
+                            <span>Email</span>
+
+                            <input
+                                required
+                                type="email"
+                                name="email"
+                                value={formValues.email}
+                                onChange={handleFormChange}
+                                placeholder="Email address"
+                                className="rounded-lg border border-gray-300 bg-white px-3 py-2 outline-none focus:border-purple-500"
+                            />
+                        </label>
+
+                        <label className="flex flex-col gap-1 text-sm font-medium text-gray-700">
+                            <span>Role</span>
+
+                            <select
+                                name="role"
+                                value={formValues.role}
+                                onChange={handleFormChange}
+                                className="rounded-lg border border-gray-300 bg-white px-3 py-2 outline-none focus:border-purple-500"
+                            >
+                                <option value="Employee">
+                                    Employee
+                                </option>
+
+                                <option value="Admin">
+                                    Admin
+                                </option>
+                            </select>
+                        </label>
+
+                        <label className="flex items-center gap-2 self-end rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700">
+                            <input
+                                type="checkbox"
+                                checked={formValues.active}
+                                onChange={handleActiveChange}
+                                className="h-4 w-4 accent-purple-600"
+                            />
+
+                            <span>Active user</span>
+                        </label>
+                    </div>
+
+                    <div className="mt-4 flex justify-end gap-3">
+                        <button
+                            type="button"
+                            onClick={handleCancel}
+                            className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-700 hover:bg-gray-100"
+                        >
+                            Cancel
+                        </button>
+
+                        <button
+                            type="submit"
+                            className="rounded-lg bg-purple-600 px-4 py-2 text-white hover:bg-purple-700"
+                        >
+                            Save User
+                        </button>
+                    </div>
+                </form>
             )}
 
             <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
