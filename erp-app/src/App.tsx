@@ -9,6 +9,10 @@ import ExpirationsPage from "./features/expirations/ExpirationsPage"
 import UsersPage from "./features/users/UsersPage"
 import SettingsPage from "./features/settings/SettingsPage"
 
+
+
+// import InventoryPracticePage from "./features/inventory/InventoryPracticePage.tsx";
+
 import type { Product } from "./features/products/types"
 
 const initialProducts: Product[] = [
@@ -60,6 +64,11 @@ function App() {
                     }
                 />
 
+                {/*<Route*/}
+                {/*    path="/inventory-practice"*/}
+                {/*    element={<InventoryPracticePage products={products}/>}*/}
+                {/*        />*/}
+
                 <Route
                     path="/expirations"
                     element={<ExpirationsPage products={products} />}
@@ -74,6 +83,10 @@ function App() {
                     path="/settings"
                     element={<SettingsPage />}
                 />
+
+
+
+
             </Routes>
         </Layout>
     )

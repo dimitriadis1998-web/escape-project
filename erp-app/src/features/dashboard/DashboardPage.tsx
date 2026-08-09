@@ -8,6 +8,16 @@ type DashboardPageProps = {
 const DashboardPage = ({
                            products,
                        }: DashboardPageProps) => {
+
+    const outOfStockProducts = products.filter((product) =>{
+        if(product.quantity === 0){
+            return true
+        }
+        return false
+    })
+
+
+
     return (
         <section className="p-6">
             <div className="mb-6">
@@ -43,9 +53,17 @@ const DashboardPage = ({
                     Notifications
                 </h2>
 
-                <p className="mt-2 text-sm text-gray-600">
-                    {products.length} products available
-                </p>
+                {outOfStockProducts.length !== 0 ? (
+                    outOfStockProducts.map((product) => (
+                        <p key={product.id}>
+                            {product.name} is out of stock
+                        </p>
+                    ))
+                ) : (
+                    <p>There are no out-of-stock products</p>
+                )}
+                
+
             </section>
         </section>
     )
