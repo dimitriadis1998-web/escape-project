@@ -7,7 +7,7 @@ import ProductsPage from "./features/products/ProductsPage"
 import InventoryPage from "./features/inventory/InventoryPage"
 import ExpirationsPage from "./features/expirations/ExpirationsPage"
 import UsersPage from "./features/users/UsersPage"
-import SettingsPage from "./features/settings/SettingsPage"
+
 
 
 
@@ -78,13 +78,6 @@ function App() {
                     path="/users"
                     element={<UsersPage />}
                 />
-
-                <Route
-                    path="/settings"
-                    element={<SettingsPage />}
-                />
-
-
 
 
             </Routes>

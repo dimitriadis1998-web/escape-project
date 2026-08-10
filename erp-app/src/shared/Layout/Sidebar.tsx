@@ -1,4 +1,4 @@
-import {CalendarClock, LayoutDashboard, Package, Settings, Users, Warehouse} from "lucide-react";
+import {CalendarClock, LayoutDashboard, Package, Users, Warehouse} from "lucide-react";
 import {NavLink} from "react-router";
 
 const Sidebar = () => {
@@ -93,22 +93,6 @@ const Sidebar = () => {
                         <span>Users</span>
                   </NavLink>
 
-                    <NavLink
-                        to="/settings"
-                        className={({ isActive }) => {
-                            const baseClasses =
-                                "flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left"
-
-                            if (isActive) {
-                                return `${baseClasses} bg-purple-600`
-                            }
-
-                            return `${baseClasses} hover:bg-gray-800`
-                        }}
-                    >
-                        <Settings className="h-5 w-5 shrink-0"/>
-                        <span>Settings</span>
-                    </NavLink>
 
                 </nav>
                 </aside>
