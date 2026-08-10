@@ -11,9 +11,11 @@ import UsersPage from "./features/users/UsersPage"
 
 
 
+
 // import InventoryPracticePage from "./features/inventory/InventoryPracticePage.tsx";
 
 import type { Product } from "./features/products/types"
+import NotFoundPage from "./features/not-found/NotFoundPage.tsx";
 
 const initialProducts: Product[] = [
     {
@@ -64,11 +66,6 @@ function App() {
                     }
                 />
 
-                {/*<Route*/}
-                {/*    path="/inventory-practice"*/}
-                {/*    element={<InventoryPracticePage products={products}/>}*/}
-                {/*        />*/}
-
                 <Route
                     path="/expirations"
                     element={<ExpirationsPage products={products} />}
@@ -77,6 +74,12 @@ function App() {
                 <Route
                     path="/users"
                     element={<UsersPage />}
+                />
+
+                <Route
+                    path = "*"
+                    element={<NotFoundPage/>}
+
                 />
 
 
