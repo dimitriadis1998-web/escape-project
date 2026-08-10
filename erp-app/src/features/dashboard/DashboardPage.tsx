@@ -25,6 +25,8 @@ const DashboardPage = ({
         return daysLeft === 1
     })
 
+    const currentDate = new Date()
+
     return (
         <section className="p-6">
             <div className="mb-6">
@@ -33,7 +35,7 @@ const DashboardPage = ({
                 </h1>
 
                 <p className="mt-1 font-medium text-gray-500">
-                    Date
+                    {currentDate.toLocaleDateString()}
                 </p>
             </div>
 
