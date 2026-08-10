@@ -1,104 +1,124 @@
-import {CalendarClock, LayoutDashboard, Package, Users, Warehouse} from "lucide-react";
-import {NavLink} from "react-router";
+import {
+    CalendarClock,
+    LayoutDashboard,
+    Package,
+    Users,
+    Warehouse,
+} from "lucide-react"
+import { NavLink } from "react-router"
 
 const Sidebar = () => {
-
-
-
     return (
-            <aside className="w-64 shrink-0 bg-gray-900 p-4 text-white">
-                <nav className="flex flex-col gap-2">
+        <aside className="w-16 shrink-0 bg-gray-900 p-2 text-white md:w-64 md:p-4">
+            <nav className="flex flex-col gap-2">
+                <NavLink
+                    to="/"
+                    end
+                    title="Dashboard"
+                    className={({ isActive }) => {
+                        const baseClasses =
+                            "flex w-full items-center justify-center gap-3 rounded-lg px-3 py-3 text-left md:justify-start"
 
-                    <NavLink
-                        to="/"
-                        end
-                        className={({ isActive }) => {
-                            const baseClasses =
-                                "flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left"
-                            if (isActive) {
-                                return `${baseClasses} bg-purple-600`
-                            }
-                            return `${baseClasses} hover:bg-gray-800`
-                        }}
-                    >
-                        <LayoutDashboard className="h-5 w-5 shrink-0" />
-                        <span>Dashboard</span>
-                    </NavLink>
+                        if (isActive) {
+                            return `${baseClasses} bg-purple-600`
+                        }
 
-                    <NavLink
-                        to="/products"
-                        className={({ isActive }) => {
-                            const baseClasses =
-                                "flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left"
+                        return `${baseClasses} hover:bg-gray-800`
+                    }}
+                >
+                    <LayoutDashboard className="h-5 w-5 shrink-0" />
 
-                            if (isActive) {
-                                return `${baseClasses} bg-purple-600`
-                            }
+                    <span className="hidden md:inline">
+                        Dashboard
+                    </span>
+                </NavLink>
 
-                            return `${baseClasses} hover:bg-gray-800`
-                        }}
-                    >
-                        <Package className="h-5 w-5 shrink-0" />
-                        <span>Products</span>
-                    </NavLink>
+                <NavLink
+                    to="/products"
+                    title="Products"
+                    className={({ isActive }) => {
+                        const baseClasses =
+                            "flex w-full items-center justify-center gap-3 rounded-lg px-3 py-3 text-left md:justify-start"
 
-                    <NavLink
-                        to="/inventory"
-                        className={({ isActive }) => {
-                            const baseClasses =
-                                "flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left"
+                        if (isActive) {
+                            return `${baseClasses} bg-purple-600`
+                        }
 
-                            if (isActive) {
-                                return `${baseClasses} bg-purple-600`
-                            }
+                        return `${baseClasses} hover:bg-gray-800`
+                    }}
+                >
+                    <Package className="h-5 w-5 shrink-0" />
 
-                            return `${baseClasses} hover:bg-gray-800`
-                        }}
-                    >
-                        <Warehouse className="h-5 w-5 shrink-0" />
-                        <span>Inventory</span>
-                    </NavLink>
+                    <span className="hidden md:inline">
+                        Products
+                    </span>
+                </NavLink>
 
-                   <NavLink
-                       to="/expirations"
-                       className={({ isActive }) => {
-                           const baseClasses =
-                               "flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left"
+                <NavLink
+                    to="/inventory"
+                    title="Inventory"
+                    className={({ isActive }) => {
+                        const baseClasses =
+                            "flex w-full items-center justify-center gap-3 rounded-lg px-3 py-3 text-left md:justify-start"
 
-                           if (isActive) {
-                               return `${baseClasses} bg-purple-600`
-                           }
+                        if (isActive) {
+                            return `${baseClasses} bg-purple-600`
+                        }
 
-                           return `${baseClasses} hover:bg-gray-800`
-                       }}
-                   >
-                        <CalendarClock className="h-5 w-5 shrink-0"/>
-                        <span>Expirations</span>
-                   </NavLink>
+                        return `${baseClasses} hover:bg-gray-800`
+                    }}
+                >
+                    <Warehouse className="h-5 w-5 shrink-0" />
 
-                  <NavLink
-                      to="/users"
-                      className={({ isActive }) => {
-                          const baseClasses =
-                              "flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left"
+                    <span className="hidden md:inline">
+                        Inventory
+                    </span>
+                </NavLink>
 
-                          if (isActive) {
-                              return `${baseClasses} bg-purple-600`
-                          }
+                <NavLink
+                    to="/expirations"
+                    title="Expirations"
+                    className={({ isActive }) => {
+                        const baseClasses =
+                            "flex w-full items-center justify-center gap-3 rounded-lg px-3 py-3 text-left md:justify-start"
 
-                          return `${baseClasses} hover:bg-gray-800`
-                      }}
-                  >
-                        <Users className="h-5 w-5 shrink-0"/>
-                        <span>Users</span>
-                  </NavLink>
+                        if (isActive) {
+                            return `${baseClasses} bg-purple-600`
+                        }
 
+                        return `${baseClasses} hover:bg-gray-800`
+                    }}
+                >
+                    <CalendarClock className="h-5 w-5 shrink-0" />
 
-                </nav>
-                </aside>
+                    <span className="hidden md:inline">
+                        Expirations
+                    </span>
+                </NavLink>
 
+                <NavLink
+                    to="/users"
+                    title="Users"
+                    className={({ isActive }) => {
+                        const baseClasses =
+                            "flex w-full items-center justify-center gap-3 rounded-lg px-3 py-3 text-left md:justify-start"
 
+                        if (isActive) {
+                            return `${baseClasses} bg-purple-600`
+                        }
 
+                        return `${baseClasses} hover:bg-gray-800`
+                    }}
+                >
+                    <Users className="h-5 w-5 shrink-0" />
+
+                    <span className="hidden md:inline">
+                        Users
+                    </span>
+                </NavLink>
+            </nav>
+        </aside>
     )
 }
-export default Sidebar;
+
+export default Sidebar
