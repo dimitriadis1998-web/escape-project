@@ -2,12 +2,15 @@ import dashboardHero from "../../assets/images/dashboard-hero.png"
 import type { Product } from "../products/types"
 import { getDaysUntilExpiration } from "../../shared/utils/dateUtils"
 
+
 type DashboardPageProps = {
-    products: Product[]
+    products: Product[],
+    userName : string,
 }
 
 const DashboardPage = ({
                            products,
+                           userName,
                        }: DashboardPageProps) => {
     const outOfStockProducts = products.filter((product) => {
         if (product.quantity === 0) {
@@ -31,7 +34,7 @@ const DashboardPage = ({
         <section className="p-6">
             <div className="mb-6">
                 <h1 className="text-2xl font-extrabold text-gray-800">
-                    Welcome User
+                    Welcome {userName}
                 </h1>
 
                 <p className="mt-1 font-medium text-gray-500">

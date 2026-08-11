@@ -15,6 +15,7 @@ import LoginPage from "./features/auth/LoginPage"
 import NotFoundPage from "./features/not-found/NotFoundPage"
 
 import type { Product } from "./features/products/types"
+import type { AuthenticatedUser } from "./features/auth/types"
 
 const initialProducts: Product[] = [
     {
@@ -39,15 +40,18 @@ function App() {
     const [products, setProducts] =
         useState<Product[]>(initialProducts)
 
-    const [isAuthenticated, setIsAuthenticated] =
-        useState(false)
+    const [currentUser, setCurrentUser] =
+        useState<AuthenticatedUser | null>(null)
 
     const handleLogin = () => {
-        setIsAuthenticated(true)
+        setCurrentUser({
+            name: "Kiriakos",
+            role: "Admin",
+        })
     }
 
     const handleLogout = () => {
-        setIsAuthenticated(false)
+        setCurrentUser(null)
     }
 
     return (
@@ -55,7 +59,7 @@ function App() {
             <Route
                 path="/login"
                 element={
-                    isAuthenticated ? (
+                    currentUser ? (
                         <Navigate
                             to="/"
                             replace
@@ -70,8 +74,11 @@ function App() {
 
             <Route
                 element={
-                    isAuthenticated ? (
-                        <Layout onLogout={handleLogout} />
+                    currentUser ? (
+                        <Layout
+                            user={currentUser}
+                            onLogout={handleLogout}
+                        />
                     ) : (
                         <Navigate
                             to="/login"
@@ -85,6 +92,7 @@ function App() {
                     element={
                         <DashboardPage
                             products={products}
+                            userName={currentUser?.name ?? "User"}
                         />
                     }
                 />

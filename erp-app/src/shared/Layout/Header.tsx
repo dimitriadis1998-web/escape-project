@@ -3,11 +3,16 @@ import {
     UserRound,
 } from "lucide-react"
 
+import type { AuthenticatedUser } from "../../features/auth/types"
+
+
 type HeaderProps = {
+    user: AuthenticatedUser
     onLogout: () => void
 }
 
 const Header = ({
+                    user,
                     onLogout,
                 }: HeaderProps) => {
     return (
@@ -25,11 +30,11 @@ const Header = ({
             <div className="flex items-center gap-3 border-l border-white/20 pl-4">
                 <div className="text-right leading-tight">
                     <p className="text-sm font-semibold text-white">
-                        Kiriakos
+                        {user.name}
                     </p>
 
                     <p className="mt-0.5 text-xs text-purple-100">
-                        Admin
+                        {user.role}
                     </p>
                 </div>
 
