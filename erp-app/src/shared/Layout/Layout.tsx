@@ -1,16 +1,23 @@
 import Header from "./Header"
 import Footer from "./Footer"
-import type { LayoutProps } from "../types"
+import { Outlet } from "react-router"
 import Sidebar from "./Sidebar";
 
-const Layout = ({ children }: LayoutProps) => {
+
+type LayoutProps = {
+    onLogout: () => void
+}
+
+const Layout = ({
+                    onLogout,
+                }: LayoutProps) => {
     return (
         <div className="flex min-h-screen">
             <Sidebar/>
             <div className="flex flex-1 flex-col ">
-              <Header />
+                <Header onLogout={onLogout} />
               <main className="container mx-auto flex-1">
-                {children}
+                <Outlet/>
               </main>
               <Footer />
             </div>

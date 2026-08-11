@@ -1,5 +1,9 @@
 import { useState } from "react"
-import { Route, Routes } from "react-router"
+import {
+    Navigate,
+    Route,
+    Routes,
+} from "react-router"
 
 import Layout from "./shared/Layout/Layout"
 import DashboardPage from "./features/dashboard/DashboardPage"
@@ -7,15 +11,10 @@ import ProductsPage from "./features/products/ProductsPage"
 import InventoryPage from "./features/inventory/InventoryPage"
 import ExpirationsPage from "./features/expirations/ExpirationsPage"
 import UsersPage from "./features/users/UsersPage"
-
-
-
-
-
-// import InventoryPracticePage from "./features/inventory/InventoryPracticePage.tsx";
+import LoginPage from "./features/auth/LoginPage"
+import NotFoundPage from "./features/not-found/NotFoundPage"
 
 import type { Product } from "./features/products/types"
-import NotFoundPage from "./features/not-found/NotFoundPage.tsx";
 
 const initialProducts: Product[] = [
     {
@@ -40,13 +39,54 @@ function App() {
     const [products, setProducts] =
         useState<Product[]>(initialProducts)
 
+    const [isAuthenticated, setIsAuthenticated] =
+        useState(false)
+
+    const handleLogin = () => {
+        setIsAuthenticated(true)
+    }
+
+    const handleLogout = () => {
+        setIsAuthenticated(false)
+    }
+
     return (
-        <Layout>
-            <Routes>
+        <Routes>
+            <Route
+                path="/login"
+                element={
+                    isAuthenticated ? (
+                        <Navigate
+                            to="/"
+                            replace
+                        />
+                    ) : (
+                        <LoginPage
+                            onLogin={handleLogin}
+                        />
+                    )
+                }
+            />
+
+            <Route
+                element={
+                    isAuthenticated ? (
+                        <Layout onLogout={handleLogout} />
+                    ) : (
+                        <Navigate
+                            to="/login"
+                            replace
+                        />
+                    )
+                }
+            >
                 <Route
-                    path="/"
-                    element={<DashboardPage products={products}
-                    />}
+                    index
+                    element={
+                        <DashboardPage
+                            products={products}
+                        />
+                    }
                 />
 
                 <Route
@@ -62,13 +102,19 @@ function App() {
                 <Route
                     path="/inventory"
                     element={
-                        <InventoryPage products={products} />
+                        <InventoryPage
+                            products={products}
+                        />
                     }
                 />
 
                 <Route
                     path="/expirations"
-                    element={<ExpirationsPage products={products} />}
+                    element={
+                        <ExpirationsPage
+                            products={products}
+                        />
+                    }
                 />
 
                 <Route
@@ -77,14 +123,11 @@ function App() {
                 />
 
                 <Route
-                    path = "*"
-                    element={<NotFoundPage/>}
-
+                    path="*"
+                    element={<NotFoundPage />}
                 />
-
-
-            </Routes>
-        </Layout>
+            </Route>
+        </Routes>
     )
 }
 

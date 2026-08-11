@@ -1,10 +1,19 @@
-import { UserRound } from "lucide-react"
+import {
+    LogOut,
+    UserRound,
+} from "lucide-react"
 
-const Header = () => {
+type HeaderProps = {
+    onLogout: () => void
+}
+
+const Header = ({
+                    onLogout,
+                }: HeaderProps) => {
     return (
-        <header className="flex h-16 w-full items-center justify-between border-b border-purple-800 bg-purple-700 px-6 text-white">
+        <header className="flex h-16 w-full items-center justify-between bg-purple-600 px-6 text-white">
             <div>
-                <h2 className="text-lg font-bold text-white">
+                <h2 className="text-lg font-bold">
                     Escape ERP
                 </h2>
 
@@ -27,6 +36,16 @@ const Header = () => {
                 <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-purple-700 shadow-sm">
                     <UserRound className="h-5 w-5" />
                 </div>
+
+                <button
+                    type="button"
+                    onClick={onLogout}
+                    aria-label="Logout"
+                    title="Logout"
+                    className="rounded-lg p-2 text-purple-100 transition hover:bg-white/15 hover:text-white"
+                >
+                    <LogOut className="h-5 w-5" />
+                </button>
             </div>
         </header>
     )
