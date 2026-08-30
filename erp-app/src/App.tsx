@@ -1,4 +1,3 @@
-import { useState } from "react"
 import {
     Navigate,
     Route,
@@ -15,32 +14,8 @@ import LoginPage from "./features/auth/LoginPage"
 import NotFoundPage from "./features/not-found/NotFoundPage"
 import { useAuth } from "./features/auth/AuthContext"
 
-import type { Product } from "./features/products/types"
-
-const initialProducts: Product[] = [
-    {
-        id: "1",
-        name: "Pepsi Max 500ml",
-        category: "Drinks",
-        price: 1.2,
-        quantity: 24,
-        expirationDate: "2026-08-10",
-    },
-    {
-        id: "2",
-        name: "Molto Bueno",
-        category: "Snacks",
-        price: 1.5,
-        quantity: 12,
-        expirationDate: "2026-08-15",
-    },
-]
-
 function App() {
     const { user, logout } = useAuth()
-
-    const [products] =
-        useState<Product[]>(initialProducts)
 
     return (
         <Routes>
@@ -75,15 +50,7 @@ function App() {
             >
                 <Route
                     index
-                    element={
-                        <DashboardPage
-                            products={products}
-                            userName={
-                                user?.name ??
-                                "User"
-                            }
-                        />
-                    }
+                    element={<DashboardPage />}
                 />
 
                 <Route
