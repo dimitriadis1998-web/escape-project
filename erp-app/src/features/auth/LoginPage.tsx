@@ -4,6 +4,8 @@ import {
     type FormEvent,
 } from "react"
 
+import { useAuth } from "./AuthContext"
+
 import type { LoginFormValues } from "./types"
 
 const initialFormValues: LoginFormValues = {
@@ -11,54 +13,65 @@ const initialFormValues: LoginFormValues = {
     password: "",
 }
 
-type LoginPageProps = {
-    onLogin: () => void
-}
+const LoginPage = () => {
+    const { login } = useAuth()
 
-const LoginPage = ({
-                       onLogin,
-                   }: LoginPageProps) => {
     const [formValues, setFormValues] =
-        useState<LoginFormValues>(initialFormValues)
+        useState<LoginFormValues>(
+            initialFormValues
+        )
 
     const [error, setError] = useState("")
+    const [isSubmitting, setIsSubmitting] =
+        useState(false)
 
     const handleChange = (
         event: ChangeEvent<HTMLInputElement>
     ) => {
         const { name, value } = event.target
 
-        setFormValues((prevValues) => {
-            return {
-                ...prevValues,
-                [name]: value,
-            }
-        })
+        setFormValues((previousValues) => ({
+            ...previousValues,
+            [name]: value,
+        }))
+
+        if (error) {
+            setError("")
+        }
     }
 
-    const handleSubmit = (
+    const handleSubmit = async (
         event: FormEvent<HTMLFormElement>
-    ) => {
+    ): Promise<void> => {
         event.preventDefault()
 
-        const hasValidCredentials =
-            formValues.email === "admin@escape.gr" &&
-            formValues.password === "1234"
-
-        if (!hasValidCredentials) {
-            setError("Invalid email or password")
-            return
-        }
-
         setError("")
-        onLogin()
+        setIsSubmitting(true)
+
+        try {
+            await login({
+                email: formValues.email
+                    .trim()
+                    .toLowerCase(),
+                password: formValues.password,
+            })
+        } catch (loginError) {
+            const message =
+                loginError instanceof Error
+                    ? loginError.message
+                    : "Login failed"
+
+            setError(message)
+        } finally {
+            setIsSubmitting(false)
+        }
     }
 
     return (
         <section className="flex min-h-screen items-center justify-center bg-gray-100 p-6">
             <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-xl">
                 <h1 className="text-center text-3xl font-extrabold text-gray-900">
-                    Welcome To Escape
+                    Welcome to ERP
                 </h1>
 
                 <p className="mt-2 text-center text-sm text-gray-500">
@@ -81,12 +94,15 @@ const LoginPage = ({
                             id="email"
                             type="email"
                             name="email"
-                            value={formValues.email}
+                            value={
+                                formValues.email
+                            }
                             onChange={handleChange}
                             placeholder="Enter your email address"
                             autoComplete="email"
                             required
-                            className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm text-gray-800 outline-none transition focus:border-purple-500 focus:ring-2 focus:ring-purple-200"
+                            disabled={isSubmitting}
+                            className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm text-gray-800 outline-none transition focus:border-purple-500 focus:ring-2 focus:ring-purple-200 disabled:cursor-not-allowed disabled:bg-gray-100"
                         />
                     </div>
 
@@ -102,12 +118,15 @@ const LoginPage = ({
                             id="password"
                             type="password"
                             name="password"
-                            value={formValues.password}
+                            value={
+                                formValues.password
+                            }
                             onChange={handleChange}
                             placeholder="Enter your password"
                             autoComplete="current-password"
                             required
-                            className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm text-gray-800 outline-none transition focus:border-purple-500 focus:ring-2 focus:ring-purple-200"
+                            disabled={isSubmitting}
+                            className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm text-gray-800 outline-none transition focus:border-purple-500 focus:ring-2 focus:ring-purple-200 disabled:cursor-not-allowed disabled:bg-gray-100"
                         />
                     </div>
 
@@ -119,9 +138,12 @@ const LoginPage = ({
 
                     <button
                         type="submit"
-                        className="w-full rounded-lg bg-purple-600 px-4 py-3 font-semibold text-white transition hover:bg-purple-700"
+                        disabled={isSubmitting}
+                        className="w-full rounded-lg bg-purple-600 px-4 py-3 font-semibold text-white transition hover:bg-purple-700 disabled:cursor-not-allowed disabled:bg-purple-400"
                     >
-                        Sign In
+                        {isSubmitting
+                            ? "Signing in..."
+                            : "Sign In"}
                     </button>
                 </form>
             </div>

@@ -13,9 +13,9 @@ import ExpirationsPage from "./features/expirations/ExpirationsPage"
 import UsersPage from "./features/users/UsersPage"
 import LoginPage from "./features/auth/LoginPage"
 import NotFoundPage from "./features/not-found/NotFoundPage"
+import { useAuth } from "./features/auth/AuthContext"
 
 import type { Product } from "./features/products/types"
-import type { AuthenticatedUser } from "./features/auth/types"
 
 const initialProducts: Product[] = [
     {
@@ -37,47 +37,33 @@ const initialProducts: Product[] = [
 ]
 
 function App() {
+    const { user, logout } = useAuth()
+
     const [products, setProducts] =
         useState<Product[]>(initialProducts)
-
-    const [currentUser, setCurrentUser] =
-        useState<AuthenticatedUser | null>(null)
-
-    const handleLogin = () => {
-        setCurrentUser({
-            name: "Kiriakos",
-            role: "Admin",
-        })
-    }
-
-    const handleLogout = () => {
-        setCurrentUser(null)
-    }
 
     return (
         <Routes>
             <Route
                 path="/login"
                 element={
-                    currentUser ? (
+                    user ? (
                         <Navigate
                             to="/"
                             replace
                         />
                     ) : (
-                        <LoginPage
-                            onLogin={handleLogin}
-                        />
+                        <LoginPage />
                     )
                 }
             />
 
             <Route
                 element={
-                    currentUser ? (
+                    user ? (
                         <Layout
-                            user={currentUser}
-                            onLogout={handleLogout}
+                            user={user}
+                            onLogout={logout}
                         />
                     ) : (
                         <Navigate
@@ -92,7 +78,7 @@ function App() {
                     element={
                         <DashboardPage
                             products={products}
-                            userName={currentUser?.name ?? "User"}
+                            userName={user?.name ?? "User"}
                         />
                     }
                 />

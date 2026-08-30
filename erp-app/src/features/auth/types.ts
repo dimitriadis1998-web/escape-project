@@ -1,9 +1,23 @@
+export type UserRole =
+    | "admin"
+    | "editor"
+    | "reader"
+
 export type LoginFormValues = {
-    email :string,
-    password: string,
+    email: string
+    password: string
 }
 
 export type AuthenticatedUser = {
+    id: string
     name: string
-    role: string
+    email: string
+    role: UserRole
+    tenantId: string
+}
+
+export type AuthSession = {
+    accessToken: string
+    tokenType: string
+    user: AuthenticatedUser
 }
