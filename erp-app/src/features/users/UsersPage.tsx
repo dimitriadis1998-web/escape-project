@@ -1,110 +1,326 @@
 import {
+    useCallback,
+    useEffect,
     useState,
     type ChangeEvent,
     type FormEvent,
 } from "react"
-import { Plus, Trash2 } from "lucide-react"
-import type { User, UserFormValues } from "./types"
+import {
+    Pencil,
+    Plus,
+    Trash2,
+} from "lucide-react"
 
-const initialUsers: User[] = [
-    {
-        id: "1",
-        name: "Kiriakos",
-        email: "kiriakos123@gmail.com",
-        active: true,
-        role: "Admin",
-    },
-    {
-        id: "2",
-        name: "Anastasia",
-        email: "anastasia1@gmail.com",
-        active: false,
-        role: "Employee",
-    },
-]
+import { useAuth } from "../auth/AuthContext"
+
+import {
+    deactivateUser,
+    getUsers,
+    registerUser,
+    updateUser,
+} from "./users.api"
+
+import type {
+    ManagedUserRole,
+    UserFormValues,
+    UserRecord,
+} from "./types"
 
 const initialFormValues: UserFormValues = {
     name: "",
     email: "",
-    role: "Employee",
-    active: true,
+    password: "",
+    role: "reader",
+}
+
+const getErrorMessage = (
+    error: unknown
+): string => {
+    if (error instanceof Error) {
+        return error.message
+    }
+
+    return "An unexpected error occurred"
+}
+
+const formatRole = (
+    role: ManagedUserRole
+): string => {
+    return (
+        role.charAt(0).toUpperCase() +
+        role.slice(1)
+    )
 }
 
 const UsersPage = () => {
+    const {
+        user: currentUser,
+        accessToken,
+    } = useAuth()
+
     const [users, setUsers] =
-        useState<User[]>(initialUsers)
+        useState<UserRecord[]>([])
+
+    const [isLoading, setIsLoading] =
+        useState(true)
+
+    const [isSaving, setIsSaving] =
+        useState(false)
+
+    const [deactivatingUserId, setDeactivatingUserId] =
+        useState<string | null>(null)
 
     const [isFormOpen, setIsFormOpen] =
         useState(false)
 
+    const [editingUserId, setEditingUserId] =
+        useState<string | null>(null)
+
     const [formValues, setFormValues] =
-        useState<UserFormValues>(initialFormValues)
+        useState<UserFormValues>(
+            initialFormValues
+        )
+
+    const [error, setError] =
+        useState("")
+
+    const [successMessage, setSuccessMessage] =
+        useState("")
+
+    const isAdmin =
+        currentUser?.role === "admin"
+
+    const loadUsers =
+        useCallback(async (): Promise<void> => {
+            if (!accessToken || !isAdmin) {
+                setIsLoading(false)
+                return
+            }
+
+            setIsLoading(true)
+            setError("")
+
+            try {
+                const userRecords =
+                    await getUsers(accessToken)
+
+                setUsers(userRecords)
+            } catch (requestError) {
+                setError(
+                    getErrorMessage(requestError)
+                )
+            } finally {
+                setIsLoading(false)
+            }
+        }, [accessToken, isAdmin])
+
+    useEffect(() => {
+        void loadUsers()
+    }, [loadUsers])
+
+    const resetForm = (): void => {
+        setFormValues(initialFormValues)
+        setEditingUserId(null)
+        setIsFormOpen(false)
+    }
+
+    const handleOpenAddForm = (): void => {
+        setError("")
+        setSuccessMessage("")
+        setEditingUserId(null)
+        setFormValues(initialFormValues)
+        setIsFormOpen(true)
+    }
+
+    const handleOpenEditForm = (
+        selectedUser: UserRecord
+    ): void => {
+        setError("")
+        setSuccessMessage("")
+        setEditingUserId(selectedUser._id)
+
+        setFormValues({
+            name: selectedUser.name,
+            email: selectedUser.email,
+            password: "",
+            role: selectedUser.role,
+        })
+
+        setIsFormOpen(true)
+    }
 
     const handleFormChange = (
         event: ChangeEvent<
-            HTMLInputElement | HTMLSelectElement
+            HTMLInputElement |
+            HTMLSelectElement
         >
-    ) => {
-        const { name, value } = event.target
+    ): void => {
+        const {
+            name,
+            value,
+        } = event.target
 
-        setFormValues((prevValues) => {
-            return {
-                ...prevValues,
-                [name]: value,
-            }
-        })
+        if (name === "role") {
+            setFormValues((previousValues) => ({
+                ...previousValues,
+                role: value as ManagedUserRole,
+            }))
+
+            return
+        }
+
+        setFormValues((previousValues) => ({
+            ...previousValues,
+            [name]: value,
+        }))
     }
 
-    const handleActiveChange = (
-        event: ChangeEvent<HTMLInputElement>
-    ) => {
-        setFormValues((prevValues) => {
-            return {
-                ...prevValues,
-                active: event.target.checked,
-            }
-        })
-    }
-
-    const handleAddUser = (
+    const handleSubmit = async (
         event: FormEvent<HTMLFormElement>
-    ) => {
+    ): Promise<void> => {
         event.preventDefault()
 
         if (
-            !formValues.name.trim() ||
-            !formValues.email.trim()
+            !accessToken ||
+            !currentUser ||
+            !isAdmin
         ) {
             return
         }
 
-        const newUser: User = {
-            id: crypto.randomUUID(),
-            name: formValues.name.trim(),
-            email: formValues.email.trim(),
-            role: formValues.role,
-            active: formValues.active,
+        setIsSaving(true)
+        setError("")
+        setSuccessMessage("")
+
+        try {
+            if (editingUserId) {
+                await updateUser(
+                    accessToken,
+                    editingUserId,
+                    {
+                        name: formValues.name.trim(),
+                        email: formValues.email
+                            .trim()
+                            .toLowerCase(),
+                        role: formValues.role,
+                    }
+                )
+
+                setSuccessMessage(
+                    "User updated successfully"
+                )
+            } else {
+                const registeredUser =
+                    await registerUser(
+                        accessToken,
+                        {
+                            name: formValues.name
+                                .trim(),
+                            email: formValues.email
+                                .trim()
+                                .toLowerCase(),
+                            password:
+                            formValues.password,
+                            tenantId:
+                            currentUser.tenantId,
+                        }
+                    )
+
+                if (
+                    formValues.role === "admin"
+                ) {
+                    await updateUser(
+                        accessToken,
+                        registeredUser.id,
+                        {
+                            role: "admin",
+                        }
+                    )
+                }
+
+                setSuccessMessage(
+                    "User created successfully"
+                )
+            }
+
+            resetForm()
+            await loadUsers()
+        } catch (requestError) {
+            setError(
+                getErrorMessage(requestError)
+            )
+        } finally {
+            setIsSaving(false)
+        }
+    }
+
+    const handleDeactivateUser = async (
+        selectedUser: UserRecord
+    ): Promise<void> => {
+        if (
+            !accessToken ||
+            !isAdmin ||
+            selectedUser._id === currentUser?.id
+        ) {
+            return
         }
 
-        setUsers((prevUsers) => {
-            return [...prevUsers, newUser]
-        })
-
-        setFormValues(initialFormValues)
-        setIsFormOpen(false)
-    }
-
-    const handleCancel = () => {
-        setFormValues(initialFormValues)
-        setIsFormOpen(false)
-    }
-
-    const handleDeleteUser = (id: string) => {
-        setUsers((prevUsers) => {
-            return prevUsers.filter(
-                (user) => user.id !== id
+        const shouldDeactivate =
+            window.confirm(
+                `Deactivate ${selectedUser.name}?`
             )
-        })
+
+        if (!shouldDeactivate) {
+            return
+        }
+
+        setDeactivatingUserId(
+            selectedUser._id
+        )
+        setError("")
+        setSuccessMessage("")
+
+        try {
+            await deactivateUser(
+                accessToken,
+                selectedUser._id
+            )
+
+            setUsers((previousUsers) => {
+                return previousUsers.filter(
+                    (userRecord) =>
+                        userRecord._id !==
+                        selectedUser._id
+                )
+            })
+
+            setSuccessMessage(
+                "User deactivated successfully"
+            )
+        } catch (requestError) {
+            setError(
+                getErrorMessage(requestError)
+            )
+        } finally {
+            setDeactivatingUserId(null)
+        }
+    }
+
+    if (!isAdmin) {
+        return (
+            <section className="p-6">
+                <div className="rounded-xl border border-yellow-300 bg-yellow-50 p-6">
+                    <h1 className="text-xl font-bold text-yellow-800">
+                        Administrator access required
+                    </h1>
+
+                    <p className="mt-2 text-sm text-yellow-700">
+                        Only administrators can view
+                        and manage application users.
+                    </p>
+                </div>
+            </section>
+        )
     }
 
     return (
@@ -122,21 +338,36 @@ const UsersPage = () => {
 
                 <button
                     type="button"
-                    onClick={() => setIsFormOpen(true)}
-                    className="flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-white hover:bg-purple-700"
+                    onClick={handleOpenAddForm}
+                    disabled={isFormOpen}
+                    className="flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-white transition hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                     <Plus className="h-5 w-5" />
                     <span>Add User</span>
                 </button>
             </div>
 
+            {error && (
+                <p className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm font-medium text-red-700">
+                    {error}
+                </p>
+            )}
+
+            {successMessage && (
+                <p className="mb-4 rounded-lg border border-green-200 bg-green-50 p-3 text-sm font-medium text-green-700">
+                    {successMessage}
+                </p>
+            )}
+
             {isFormOpen && (
                 <form
-                    onSubmit={handleAddUser}
+                    onSubmit={handleSubmit}
                     className="mb-6 rounded-xl border border-purple-200 bg-purple-50 p-4"
                 >
                     <h2 className="mb-4 text-lg font-bold text-gray-800">
-                        Add New User
+                        {editingUserId
+                            ? "Edit User"
+                            : "Add New User"}
                     </h2>
 
                     <div className="grid gap-4 md:grid-cols-2">
@@ -145,11 +376,13 @@ const UsersPage = () => {
 
                             <input
                                 required
+                                minLength={2}
+                                maxLength={100}
                                 type="text"
                                 name="name"
                                 value={formValues.name}
                                 onChange={handleFormChange}
-                                placeholder="Username"
+                                placeholder="Full name"
                                 className="rounded-lg border border-gray-300 bg-white px-3 py-2 outline-none focus:border-purple-500"
                             />
                         </label>
@@ -159,6 +392,7 @@ const UsersPage = () => {
 
                             <input
                                 required
+                                maxLength={150}
                                 type="email"
                                 name="email"
                                 value={formValues.email}
@@ -167,6 +401,29 @@ const UsersPage = () => {
                                 className="rounded-lg border border-gray-300 bg-white px-3 py-2 outline-none focus:border-purple-500"
                             />
                         </label>
+
+                        {!editingUserId && (
+                            <label className="flex flex-col gap-1 text-sm font-medium text-gray-700">
+                                <span>Password</span>
+
+                                <input
+                                    required
+                                    minLength={8}
+                                    maxLength={72}
+                                    type="password"
+                                    name="password"
+                                    value={
+                                        formValues.password
+                                    }
+                                    onChange={
+                                        handleFormChange
+                                    }
+                                    placeholder="At least 8 characters"
+                                    autoComplete="new-password"
+                                    className="rounded-lg border border-gray-300 bg-white px-3 py-2 outline-none focus:border-purple-500"
+                                />
+                            </label>
+                        )}
 
                         <label className="flex flex-col gap-1 text-sm font-medium text-gray-700">
                             <span>Role</span>
@@ -177,42 +434,37 @@ const UsersPage = () => {
                                 onChange={handleFormChange}
                                 className="rounded-lg border border-gray-300 bg-white px-3 py-2 outline-none focus:border-purple-500"
                             >
-                                <option value="Employee">
-                                    Employee
+                                <option value="reader">
+                                    Reader
                                 </option>
 
-                                <option value="Admin">
+                                <option value="admin">
                                     Admin
                                 </option>
                             </select>
-                        </label>
-
-                        <label className="flex items-center gap-2 self-end rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700">
-                            <input
-                                type="checkbox"
-                                checked={formValues.active}
-                                onChange={handleActiveChange}
-                                className="h-4 w-4 accent-purple-600"
-                            />
-
-                            <span>Active user</span>
                         </label>
                     </div>
 
                     <div className="mt-4 flex justify-end gap-3">
                         <button
                             type="button"
-                            onClick={handleCancel}
-                            className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-700 hover:bg-gray-100"
+                            onClick={resetForm}
+                            disabled={isSaving}
+                            className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-700 transition hover:bg-gray-100 disabled:opacity-50"
                         >
                             Cancel
                         </button>
 
                         <button
                             type="submit"
-                            className="rounded-lg bg-purple-600 px-4 py-2 text-white hover:bg-purple-700"
+                            disabled={isSaving}
+                            className="rounded-lg bg-purple-600 px-4 py-2 text-white transition hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-50"
                         >
-                            Save User
+                            {isSaving
+                                ? "Saving..."
+                                : editingUserId
+                                    ? "Update User"
+                                    : "Save User"}
                         </button>
                     </div>
                 </form>
@@ -239,67 +491,120 @@ const UsersPage = () => {
                         </th>
 
                         <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-600">
-                            Action
+                            Actions
                         </th>
                     </tr>
                     </thead>
 
                     <tbody>
-                    {users.length > 0 ? (
-                        users.map((user) => (
-                            <tr
-                                key={user.id}
-                                className="border-t border-gray-200 hover:bg-gray-50"
+                    {isLoading ? (
+                        <tr>
+                            <td
+                                colSpan={5}
+                                className="px-4 py-8 text-center text-sm text-gray-500"
                             >
-                                <td className="px-4 py-4 text-sm font-medium text-gray-800">
-                                    {user.name}
-                                </td>
+                                Loading users...
+                            </td>
+                        </tr>
+                    ) : users.length > 0 ? (
+                        users.map(
+                            (userRecord) => {
+                                const isCurrentUser =
+                                    userRecord._id ===
+                                    currentUser?.id
 
-                                <td className="px-4 py-4 text-sm text-gray-700">
-                                    {user.email}
-                                </td>
+                                const isDeactivating =
+                                    deactivatingUserId ===
+                                    userRecord._id
 
-                                <td className="px-4 py-4 text-sm">
-                                        <span className="rounded-full bg-purple-100 px-3 py-1 text-xs font-semibold text-purple-700">
-                                            {user.role}
-                                        </span>
-                                </td>
-
-                                <td className="px-4 py-4 text-sm">
-                                        <span
-                                            className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                                                user.active
-                                                    ? "bg-green-100 text-green-700"
-                                                    : "bg-gray-200 text-gray-600"
-                                            }`}
-                                        >
-                                            {user.active
-                                                ? "Active"
-                                                : "Inactive"}
-                                        </span>
-                                </td>
-
-                                <td className="px-4 py-4">
-                                    <button
-                                        type="button"
-                                        onClick={() =>
-                                            handleDeleteUser(user.id)
+                                return (
+                                    <tr
+                                        key={
+                                            userRecord._id
                                         }
-                                        aria-label={`Delete ${user.name}`}
-                                        className="rounded-lg p-2 text-gray-500 hover:bg-red-100 hover:text-red-600"
+                                        className="border-t border-gray-200 hover:bg-gray-50"
                                     >
-                                        <Trash2 className="h-4 w-4" />
-                                    </button>
-                                </td>
-                            </tr>
-                        ))
+                                        <td className="px-4 py-4 text-sm font-medium text-gray-800">
+                                            {
+                                                userRecord.name
+                                            }
+
+                                            {isCurrentUser && (
+                                                <span className="ml-2 text-xs font-semibold text-purple-600">
+                                                        You
+                                                    </span>
+                                            )}
+                                        </td>
+
+                                        <td className="px-4 py-4 text-sm text-gray-700">
+                                            {
+                                                userRecord.email
+                                            }
+                                        </td>
+
+                                        <td className="px-4 py-4 text-sm">
+                                                <span className="rounded-full bg-purple-100 px-3 py-1 text-xs font-semibold text-purple-700">
+                                                    {formatRole(
+                                                        userRecord.role
+                                                    )}
+                                                </span>
+                                        </td>
+
+                                        <td className="px-4 py-4 text-sm">
+                                                <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-700">
+                                                    Active
+                                                </span>
+                                        </td>
+
+                                        <td className="px-4 py-4">
+                                            <div className="flex items-center gap-1">
+                                                <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                        handleOpenEditForm(
+                                                            userRecord
+                                                        )
+                                                    }
+                                                    aria-label={`Edit ${userRecord.name}`}
+                                                    className="rounded-lg p-2 text-gray-500 transition hover:bg-purple-100 hover:text-purple-600"
+                                                >
+                                                    <Pencil className="h-4 w-4" />
+                                                </button>
+
+                                                <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                        void handleDeactivateUser(
+                                                            userRecord
+                                                        )
+                                                    }
+                                                    disabled={
+                                                        isCurrentUser ||
+                                                        isDeactivating
+                                                    }
+                                                    title={
+                                                        isCurrentUser
+                                                            ? "You cannot deactivate your own account"
+                                                            : "Deactivate user"
+                                                    }
+                                                    aria-label={`Deactivate ${userRecord.name}`}
+                                                    className="rounded-lg p-2 text-gray-500 transition hover:bg-red-100 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-30"
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                )
+                            }
+                        )
                     ) : (
                         <tr>
                             <td
                                 colSpan={5}
                                 className="px-4 py-8 text-center text-sm text-gray-500"
                             >
-                                No users found
+                                No active users found
                             </td>
                         </tr>
                     )}
