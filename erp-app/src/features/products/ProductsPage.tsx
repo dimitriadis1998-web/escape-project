@@ -2,9 +2,12 @@ import {
     Heart,
     Pencil,
     Plus,
+    RotateCcw,
+    Search,
     Trash2,
 } from "lucide-react"
 import {
+    useCallback,
     useEffect,
     useState,
     type ChangeEvent,
@@ -13,6 +16,7 @@ import {
 
 import { useAuth } from "../auth/AuthContext"
 import { getCategories } from "../categories/categories.api"
+
 import {
     createProduct,
     deactivateProduct,
@@ -21,7 +25,13 @@ import {
 } from "./products.api"
 
 import type { Category } from "../categories/types"
-import type { ProductRecord } from "./types"
+
+import type {
+    ProductFilters,
+    ProductRecord,
+    ProductSortField,
+    ProductSortOrder,
+} from "./types"
 
 type ProductFormValues = {
     name: string
@@ -31,6 +41,21 @@ type ProductFormValues = {
     price: string
     categoryId: string
     isFavorite: boolean
+}
+
+type FavoriteFilterValue =
+    | "all"
+    | "true"
+    | "false"
+
+type ProductFilterFormValues = {
+    search: string
+    categoryId: string
+    favorite: FavoriteFilterValue
+    minPrice: string
+    maxPrice: string
+    sortBy: ProductSortField
+    sortOrder: ProductSortOrder
 }
 
 const initialFormValues: ProductFormValues = {
@@ -43,6 +68,21 @@ const initialFormValues: ProductFormValues = {
     isFavorite: false,
 }
 
+const initialFilterValues: ProductFilterFormValues = {
+    search: "",
+    categoryId: "",
+    favorite: "all",
+    minPrice: "",
+    maxPrice: "",
+    sortBy: "name",
+    sortOrder: "asc",
+}
+
+const initialProductFilters: ProductFilters = {
+    sortBy: "name",
+    sortOrder: "asc",
+}
+
 const getErrorMessage = (
     error: unknown
 ): string => {
@@ -51,8 +91,50 @@ const getErrorMessage = (
         : "Something went wrong"
 }
 
+const buildProductFilters = (
+    values: ProductFilterFormValues
+): ProductFilters => {
+    const filters: ProductFilters = {
+        sortBy: values.sortBy,
+        sortOrder: values.sortOrder,
+    }
+
+    if (values.search.trim()) {
+        filters.search =
+            values.search.trim()
+    }
+
+    if (values.categoryId) {
+        filters.categoryId =
+            values.categoryId
+    }
+
+    if (values.favorite === "true") {
+        filters.isFavorite = true
+    }
+
+    if (values.favorite === "false") {
+        filters.isFavorite = false
+    }
+
+    if (values.minPrice !== "") {
+        filters.minPrice =
+            Number(values.minPrice)
+    }
+
+    if (values.maxPrice !== "") {
+        filters.maxPrice =
+            Number(values.maxPrice)
+    }
+
+    return filters
+}
+
 const ProductsPage = () => {
-    const { accessToken, user } = useAuth()
+    const {
+        accessToken,
+        user,
+    } = useAuth()
 
     const [products, setProducts] =
         useState<ProductRecord[]>([])
@@ -65,8 +147,20 @@ const ProductsPage = () => {
             initialFormValues
         )
 
-    const [editingProductId, setEditingProductId] =
-        useState<string | null>(null)
+    const [filterValues, setFilterValues] =
+        useState<ProductFilterFormValues>(
+            initialFilterValues
+        )
+
+    const [appliedFilters, setAppliedFilters] =
+        useState<ProductFilters>(
+            initialProductFilters
+        )
+
+    const [
+        editingProductId,
+        setEditingProductId,
+    ] = useState<string | null>(null)
 
     const [isFormOpen, setIsFormOpen] =
         useState(false)
@@ -77,23 +171,27 @@ const ProductsPage = () => {
     const [isSubmitting, setIsSubmitting] =
         useState(false)
 
-    const [error, setError] = useState("")
+    const [error, setError] =
+        useState("")
 
     const canManageProducts =
         user?.role === "admin" ||
         user?.role === "editor"
 
     const refreshProducts =
-        async (): Promise<void> => {
+        useCallback(async (): Promise<void> => {
             if (!accessToken) {
                 return
             }
 
             const productData =
-                await getProducts(accessToken)
+                await getProducts(
+                    accessToken,
+                    appliedFilters
+                )
 
             setProducts(productData)
-        }
+        }, [accessToken, appliedFilters])
 
     useEffect(() => {
         if (!accessToken) {
@@ -112,8 +210,13 @@ const ProductsPage = () => {
                         productData,
                         categoryData,
                     ] = await Promise.all([
-                        getProducts(accessToken),
-                        getCategories(accessToken),
+                        getProducts(
+                            accessToken,
+                            appliedFilters
+                        ),
+                        getCategories(
+                            accessToken
+                        ),
                     ])
 
                     if (isActive) {
@@ -140,9 +243,12 @@ const ProductsPage = () => {
         return () => {
             isActive = false
         }
-    }, [accessToken])
+    }, [
+        accessToken,
+        appliedFilters,
+    ])
 
-    const handleOpenAddForm = () => {
+    const handleOpenAddForm = (): void => {
         setEditingProductId(null)
         setFormValues(initialFormValues)
         setError("")
@@ -151,7 +257,7 @@ const ProductsPage = () => {
 
     const handleEditClick = (
         product: ProductRecord
-    ) => {
+    ): void => {
         setEditingProductId(product._id)
 
         setFormValues({
@@ -163,7 +269,8 @@ const ProductsPage = () => {
             price: product.price.toString(),
             categoryId:
             product.categoryId._id,
-            isFavorite: product.isFavorite,
+            isFavorite:
+            product.isFavorite,
         })
 
         setError("")
@@ -176,25 +283,139 @@ const ProductsPage = () => {
             | HTMLTextAreaElement
             | HTMLSelectElement
         >
-    ) => {
-        const { name, value } = event.target
+    ): void => {
+        const {
+            name,
+            value,
+        } = event.target
 
-        setFormValues((previousValues) => ({
-            ...previousValues,
-            [name]: value,
-        }))
+        setFormValues(
+            (previousValues) => ({
+                ...previousValues,
+                [name]: value,
+            })
+        )
     }
 
     const handleFavoriteChange = (
         event: ChangeEvent<HTMLInputElement>
-    ) => {
-        setFormValues((previousValues) => ({
-            ...previousValues,
-            isFavorite: event.target.checked,
-        }))
+    ): void => {
+        setFormValues(
+            (previousValues) => ({
+                ...previousValues,
+                isFavorite:
+                event.target.checked,
+            })
+        )
     }
 
-    const handleCloseForm = () => {
+    const handleFilterChange = (
+        event: ChangeEvent<
+            HTMLInputElement |
+            HTMLSelectElement
+        >
+    ): void => {
+        const {
+            name,
+            value,
+        } = event.target
+
+        if (name === "favorite") {
+            setFilterValues(
+                (previousValues) => ({
+                    ...previousValues,
+                    favorite:
+                        value as FavoriteFilterValue,
+                })
+            )
+
+            return
+        }
+
+        if (name === "sortBy") {
+            setFilterValues(
+                (previousValues) => ({
+                    ...previousValues,
+                    sortBy:
+                        value as ProductSortField,
+                })
+            )
+
+            return
+        }
+
+        if (name === "sortOrder") {
+            setFilterValues(
+                (previousValues) => ({
+                    ...previousValues,
+                    sortOrder:
+                        value as ProductSortOrder,
+                })
+            )
+
+            return
+        }
+
+        setFilterValues(
+            (previousValues) => ({
+                ...previousValues,
+                [name]: value,
+            })
+        )
+    }
+
+    const handleApplyFilters = (
+        event: FormEvent<HTMLFormElement>
+    ): void => {
+        event.preventDefault()
+
+        const minPrice =
+            filterValues.minPrice === ""
+                ? undefined
+                : Number(
+                    filterValues.minPrice
+                )
+
+        const maxPrice =
+            filterValues.maxPrice === ""
+                ? undefined
+                : Number(
+                    filterValues.maxPrice
+                )
+
+        if (
+            minPrice !== undefined &&
+            maxPrice !== undefined &&
+            minPrice > maxPrice
+        ) {
+            setError(
+                "Minimum price must be less than or equal to maximum price"
+            )
+            return
+        }
+
+        setError("")
+
+        setAppliedFilters(
+            buildProductFilters(
+                filterValues
+            )
+        )
+    }
+
+    const handleClearFilters = (): void => {
+        setFilterValues(
+            initialFilterValues
+        )
+
+        setAppliedFilters(
+            initialProductFilters
+        )
+
+        setError("")
+    }
+
+    const handleCloseForm = (): void => {
         setFormValues(initialFormValues)
         setEditingProductId(null)
         setIsFormOpen(false)
@@ -227,8 +448,11 @@ const ProductsPage = () => {
             description:
                 formValues.description.trim() ||
                 undefined,
-            price: Number(formValues.price),
-            categoryId: formValues.categoryId,
+            price: Number(
+                formValues.price
+            ),
+            categoryId:
+            formValues.categoryId,
             isFavorite:
             formValues.isFavorite,
         }
@@ -265,9 +489,10 @@ const ProductsPage = () => {
             return
         }
 
-        const shouldDelete = window.confirm(
-            `Deactivate ${product.name}?`
-        )
+        const shouldDelete =
+            window.confirm(
+                `Deactivate ${product.name}?`
+            )
 
         if (!shouldDelete) {
             return
@@ -291,7 +516,7 @@ const ProductsPage = () => {
 
     return (
         <section className="p-6">
-            <div className="mb-6 flex items-center justify-between">
+            <div className="mb-6 flex items-center justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-extrabold text-gray-800">
                         PRODUCTS
@@ -305,14 +530,234 @@ const ProductsPage = () => {
                 {canManageProducts && (
                     <button
                         type="button"
-                        onClick={handleOpenAddForm}
-                        className="flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-white hover:bg-purple-700"
+                        onClick={
+                            handleOpenAddForm
+                        }
+                        className="flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-white transition hover:bg-purple-700"
                     >
                         <Plus className="h-5 w-5" />
                         <span>Add Product</span>
                     </button>
                 )}
             </div>
+
+            <form
+                onSubmit={handleApplyFilters}
+                className="mb-6 rounded-xl border border-gray-200 bg-white p-4"
+            >
+                <div className="mb-4 flex items-center gap-2">
+                    <Search className="h-5 w-5 text-purple-600" />
+
+                    <h2 className="font-bold text-gray-800">
+                        Search and Filters
+                    </h2>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                    <label className="flex flex-col gap-1 xl:col-span-2">
+                        <span className="text-sm font-medium text-gray-700">
+                            Search
+                        </span>
+
+                        <input
+                            type="search"
+                            name="search"
+                            value={
+                                filterValues.search
+                            }
+                            onChange={
+                                handleFilterChange
+                            }
+                            placeholder="Search by name, SKU or barcode"
+                            className="rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-purple-500"
+                        />
+                    </label>
+
+                    <label className="flex flex-col gap-1">
+                        <span className="text-sm font-medium text-gray-700">
+                            Category
+                        </span>
+
+                        <select
+                            name="categoryId"
+                            value={
+                                filterValues.categoryId
+                            }
+                            onChange={
+                                handleFilterChange
+                            }
+                            className="rounded-lg border border-gray-300 bg-white px-3 py-2 outline-none focus:border-purple-500"
+                        >
+                            <option value="">
+                                All categories
+                            </option>
+
+                            {categories.map(
+                                (category) => (
+                                    <option
+                                        key={
+                                            category._id
+                                        }
+                                        value={
+                                            category._id
+                                        }
+                                    >
+                                        {
+                                            category.name
+                                        }
+                                    </option>
+                                )
+                            )}
+                        </select>
+                    </label>
+
+                    <label className="flex flex-col gap-1">
+                        <span className="text-sm font-medium text-gray-700">
+                            Favorite
+                        </span>
+
+                        <select
+                            name="favorite"
+                            value={
+                                filterValues.favorite
+                            }
+                            onChange={
+                                handleFilterChange
+                            }
+                            className="rounded-lg border border-gray-300 bg-white px-3 py-2 outline-none focus:border-purple-500"
+                        >
+                            <option value="all">
+                                All products
+                            </option>
+
+                            <option value="true">
+                                Favorites only
+                            </option>
+
+                            <option value="false">
+                                Non-favorites
+                            </option>
+                        </select>
+                    </label>
+
+                    <label className="flex flex-col gap-1">
+                        <span className="text-sm font-medium text-gray-700">
+                            Minimum price
+                        </span>
+
+                        <input
+                            type="number"
+                            name="minPrice"
+                            value={
+                                filterValues.minPrice
+                            }
+                            onChange={
+                                handleFilterChange
+                            }
+                            min="0"
+                            step="0.01"
+                            placeholder="0.00"
+                            className="rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-purple-500"
+                        />
+                    </label>
+
+                    <label className="flex flex-col gap-1">
+                        <span className="text-sm font-medium text-gray-700">
+                            Maximum price
+                        </span>
+
+                        <input
+                            type="number"
+                            name="maxPrice"
+                            value={
+                                filterValues.maxPrice
+                            }
+                            onChange={
+                                handleFilterChange
+                            }
+                            min="0"
+                            step="0.01"
+                            placeholder="0.00"
+                            className="rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-purple-500"
+                        />
+                    </label>
+
+                    <label className="flex flex-col gap-1">
+                        <span className="text-sm font-medium text-gray-700">
+                            Sort by
+                        </span>
+
+                        <select
+                            name="sortBy"
+                            value={
+                                filterValues.sortBy
+                            }
+                            onChange={
+                                handleFilterChange
+                            }
+                            className="rounded-lg border border-gray-300 bg-white px-3 py-2 outline-none focus:border-purple-500"
+                        >
+                            <option value="name">
+                                Name
+                            </option>
+
+                            <option value="price">
+                                Price
+                            </option>
+
+                            <option value="createdAt">
+                                Creation date
+                            </option>
+                        </select>
+                    </label>
+
+                    <label className="flex flex-col gap-1">
+                        <span className="text-sm font-medium text-gray-700">
+                            Order
+                        </span>
+
+                        <select
+                            name="sortOrder"
+                            value={
+                                filterValues.sortOrder
+                            }
+                            onChange={
+                                handleFilterChange
+                            }
+                            className="rounded-lg border border-gray-300 bg-white px-3 py-2 outline-none focus:border-purple-500"
+                        >
+                            <option value="asc">
+                                Ascending
+                            </option>
+
+                            <option value="desc">
+                                Descending
+                            </option>
+                        </select>
+                    </label>
+                </div>
+
+                <div className="mt-4 flex flex-wrap justify-end gap-3">
+                    <button
+                        type="button"
+                        onClick={
+                            handleClearFilters
+                        }
+                        className="flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-700 transition hover:bg-gray-100"
+                    >
+                        <RotateCcw className="h-4 w-4" />
+                        <span>Clear</span>
+                    </button>
+
+                    <button
+                        type="submit"
+                        className="flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-white transition hover:bg-purple-700"
+                    >
+                        <Search className="h-4 w-4" />
+                        <span>Apply Filters</span>
+                    </button>
+                </div>
+            </form>
 
             {error && (
                 <p className="mb-6 rounded-lg bg-red-50 p-4 text-sm font-medium text-red-700">
@@ -340,10 +785,16 @@ const ProductsPage = () => {
                             <input
                                 type="text"
                                 name="name"
-                                value={formValues.name}
-                                onChange={handleChange}
+                                value={
+                                    formValues.name
+                                }
+                                onChange={
+                                    handleChange
+                                }
                                 required
-                                disabled={isSubmitting}
+                                disabled={
+                                    isSubmitting
+                                }
                                 className="rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-purple-500"
                             />
                         </label>
@@ -356,10 +807,16 @@ const ProductsPage = () => {
                             <input
                                 type="text"
                                 name="sku"
-                                value={formValues.sku}
-                                onChange={handleChange}
+                                value={
+                                    formValues.sku
+                                }
+                                onChange={
+                                    handleChange
+                                }
                                 required
-                                disabled={isSubmitting}
+                                disabled={
+                                    isSubmitting
+                                }
                                 className="rounded-lg border border-gray-300 px-3 py-2 uppercase outline-none focus:border-purple-500"
                             />
                         </label>
@@ -375,8 +832,12 @@ const ProductsPage = () => {
                                 value={
                                     formValues.barcode
                                 }
-                                onChange={handleChange}
-                                disabled={isSubmitting}
+                                onChange={
+                                    handleChange
+                                }
+                                disabled={
+                                    isSubmitting
+                                }
                                 className="rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-purple-500"
                             />
                         </label>
@@ -389,12 +850,18 @@ const ProductsPage = () => {
                             <input
                                 type="number"
                                 name="price"
-                                value={formValues.price}
-                                onChange={handleChange}
+                                value={
+                                    formValues.price
+                                }
+                                onChange={
+                                    handleChange
+                                }
                                 required
                                 min="0"
                                 step="0.01"
-                                disabled={isSubmitting}
+                                disabled={
+                                    isSubmitting
+                                }
                                 className="rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-purple-500"
                             />
                         </label>
@@ -409,9 +876,13 @@ const ProductsPage = () => {
                                 value={
                                     formValues.categoryId
                                 }
-                                onChange={handleChange}
+                                onChange={
+                                    handleChange
+                                }
                                 required
-                                disabled={isSubmitting}
+                                disabled={
+                                    isSubmitting
+                                }
                                 className="rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-purple-500"
                             >
                                 <option value="">
@@ -447,8 +918,12 @@ const ProductsPage = () => {
                                 value={
                                     formValues.description
                                 }
-                                onChange={handleChange}
-                                disabled={isSubmitting}
+                                onChange={
+                                    handleChange
+                                }
+                                disabled={
+                                    isSubmitting
+                                }
                                 rows={3}
                                 className="rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-purple-500"
                             />
@@ -463,7 +938,9 @@ const ProductsPage = () => {
                                 onChange={
                                     handleFavoriteChange
                                 }
-                                disabled={isSubmitting}
+                                disabled={
+                                    isSubmitting
+                                }
                                 className="h-4 w-4 accent-purple-600"
                             />
 
@@ -476,9 +953,13 @@ const ProductsPage = () => {
                     <div className="mt-6 flex justify-end gap-3">
                         <button
                             type="button"
-                            onClick={handleCloseForm}
-                            disabled={isSubmitting}
-                            className="rounded-lg border border-gray-300 px-4 py-2 text-gray-700 hover:bg-gray-100"
+                            onClick={
+                                handleCloseForm
+                            }
+                            disabled={
+                                isSubmitting
+                            }
+                            className="rounded-lg border border-gray-300 px-4 py-2 text-gray-700 transition hover:bg-gray-100"
                         >
                             Cancel
                         </button>
@@ -487,9 +968,10 @@ const ProductsPage = () => {
                             type="submit"
                             disabled={
                                 isSubmitting ||
-                                categories.length === 0
+                                categories.length ===
+                                0
                             }
-                            className="flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-white hover:bg-purple-700 disabled:cursor-not-allowed disabled:bg-purple-400"
+                            className="flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-white transition hover:bg-purple-700 disabled:cursor-not-allowed disabled:bg-purple-400"
                         >
                             {!editingProductId && (
                                 <Plus className="h-5 w-5" />
@@ -506,6 +988,16 @@ const ProductsPage = () => {
                     </div>
                 </form>
             )}
+
+            <div className="mb-3 text-sm font-medium text-gray-600">
+                {isLoading
+                    ? "Loading results..."
+                    : `${products.length} product${
+                        products.length === 1
+                            ? ""
+                            : "s"
+                    } found`}
+            </div>
 
             <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
                 <table className="w-full">
@@ -563,86 +1055,95 @@ const ProductsPage = () => {
                                 }
                                 className="px-4 py-8 text-center text-sm text-gray-500"
                             >
-                                No products found
+                                No products match
+                                the selected filters
                             </td>
                         </tr>
                     ) : (
-                        products.map((product) => (
-                            <tr
-                                key={product._id}
-                                className="border-t border-gray-200"
-                            >
-                                <td className="px-4 py-4 text-sm font-medium text-gray-800">
-                                    {product.name}
-                                </td>
-
-                                <td className="px-4 py-4 text-sm text-gray-700">
-                                    {product.sku}
-                                </td>
-
-                                <td className="px-4 py-4 text-sm text-gray-700">
-                                    {
-                                        product
-                                            .categoryId
-                                            .name
+                        products.map(
+                            (product) => (
+                                <tr
+                                    key={
+                                        product._id
                                     }
-                                </td>
-
-                                <td className="px-4 py-4 text-sm text-gray-700">
-                                    {product.price.toLocaleString(
-                                        "el-GR",
+                                    className="border-t border-gray-200"
+                                >
+                                    <td className="px-4 py-4 text-sm font-medium text-gray-800">
                                         {
-                                            style:
-                                                "currency",
-                                            currency:
-                                                "EUR",
+                                            product.name
                                         }
-                                    )}
-                                </td>
-
-                                <td className="px-4 py-4">
-                                    <Heart
-                                        className={
-                                            product.isFavorite
-                                                ? "h-5 w-5 fill-purple-600 text-purple-600"
-                                                : "h-5 w-5 text-gray-400"
-                                        }
-                                    />
-                                </td>
-
-                                {canManageProducts && (
-                                    <td className="px-4 py-4">
-                                        <div className="flex items-center gap-2">
-                                            <button
-                                                type="button"
-                                                onClick={() =>
-                                                    handleEditClick(
-                                                        product
-                                                    )
-                                                }
-                                                aria-label={`Edit ${product.name}`}
-                                                className="rounded-lg p-2 text-gray-500 hover:bg-purple-100 hover:text-purple-700"
-                                            >
-                                                <Pencil className="h-4 w-4" />
-                                            </button>
-
-                                            <button
-                                                type="button"
-                                                onClick={() =>
-                                                    void handleDelete(
-                                                        product
-                                                    )
-                                                }
-                                                aria-label={`Deactivate ${product.name}`}
-                                                className="rounded-lg p-2 text-gray-500 hover:bg-red-100 hover:text-red-600"
-                                            >
-                                                <Trash2 className="h-4 w-4" />
-                                            </button>
-                                        </div>
                                     </td>
-                                )}
-                            </tr>
-                        ))
+
+                                    <td className="px-4 py-4 text-sm text-gray-700">
+                                        {
+                                            product.sku
+                                        }
+                                    </td>
+
+                                    <td className="px-4 py-4 text-sm text-gray-700">
+                                        {
+                                            product
+                                                .categoryId
+                                                .name
+                                        }
+                                    </td>
+
+                                    <td className="px-4 py-4 text-sm text-gray-700">
+                                        {product.price.toLocaleString(
+                                            "el-GR",
+                                            {
+                                                style:
+                                                    "currency",
+                                                currency:
+                                                    "EUR",
+                                            }
+                                        )}
+                                    </td>
+
+                                    <td className="px-4 py-4">
+                                        <Heart
+                                            className={
+                                                product.isFavorite
+                                                    ? "h-5 w-5 fill-purple-600 text-purple-600"
+                                                    : "h-5 w-5 text-gray-400"
+                                            }
+                                        />
+                                    </td>
+
+                                    {canManageProducts && (
+                                        <td className="px-4 py-4">
+                                            <div className="flex items-center gap-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                        handleEditClick(
+                                                            product
+                                                        )
+                                                    }
+                                                    aria-label={`Edit ${product.name}`}
+                                                    className="rounded-lg p-2 text-gray-500 transition hover:bg-purple-100 hover:text-purple-700"
+                                                >
+                                                    <Pencil className="h-4 w-4" />
+                                                </button>
+
+                                                <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                        void handleDelete(
+                                                            product
+                                                        )
+                                                    }
+                                                    aria-label={`Deactivate ${product.name}`}
+                                                    className="rounded-lg p-2 text-gray-500 transition hover:bg-red-100 hover:text-red-600"
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </button>
+                                            </div>
+                                        </td>
+                                    )}
+                                </tr>
+                            )
+                        )
                     )}
                     </tbody>
                 </table>

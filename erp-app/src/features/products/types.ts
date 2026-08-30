@@ -47,3 +47,22 @@ export type UpdateProductInput = {
     categoryId?: string
     isFavorite?: boolean
 }
+
+export type ProductSortField =
+    | "name"
+    | "price"
+    | "createdAt"
+
+export type ProductSortOrder =
+    | "asc"
+    | "desc"
+
+export type ProductFilters = {
+    search?: string
+    categoryId?: string
+    isFavorite?: boolean
+    minPrice?: number
+    maxPrice?: number
+    sortBy?: ProductSortField
+    sortOrder?: ProductSortOrder
+}
