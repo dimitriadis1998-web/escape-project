@@ -98,11 +98,7 @@ function App() {
 
                 <Route
                     path="/expirations"
-                    element={
-                        <ExpirationsPage
-                            products={products}
-                        />
-                    }
+                    element={<ExpirationsPage />}
                 />
 
                 <Route

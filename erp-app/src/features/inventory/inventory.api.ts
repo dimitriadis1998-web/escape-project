@@ -15,6 +15,22 @@ export const getInventoryBatches = async (
     )
 }
 
+export const getExpiringInventoryBatches =
+    async (
+        accessToken: string,
+        days: number
+    ): Promise<InventoryBatch[]> => {
+        const searchParams =
+            new URLSearchParams({
+                days: days.toString(),
+            })
+
+        return apiRequest<InventoryBatch[]>(
+            `/inventory-batches/expiring?${searchParams.toString()}`,
+            accessToken
+        )
+    }
+
 export const createInventoryBatch = async (
     accessToken: string,
     input: CreateInventoryBatchInput
