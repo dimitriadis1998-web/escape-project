@@ -39,7 +39,7 @@ const initialProducts: Product[] = [
 function App() {
     const { user, logout } = useAuth()
 
-    const [products, setProducts] =
+    const [products] =
         useState<Product[]>(initialProducts)
 
     return (
@@ -78,19 +78,17 @@ function App() {
                     element={
                         <DashboardPage
                             products={products}
-                            userName={user?.name ?? "User"}
+                            userName={
+                                user?.name ??
+                                "User"
+                            }
                         />
                     }
                 />
 
                 <Route
                     path="/products"
-                    element={
-                        <ProductsPage
-                            products={products}
-                            setProducts={setProducts}
-                        />
-                    }
+                    element={<ProductsPage />}
                 />
 
                 <Route

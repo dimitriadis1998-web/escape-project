@@ -1,124 +1,292 @@
-import { Pencil, Plus, Trash2 } from "lucide-react"
 import {
+    Heart,
+    Pencil,
+    Plus,
+    Trash2,
+} from "lucide-react"
+import {
+    useEffect,
     useState,
     type ChangeEvent,
-    type Dispatch,
     type FormEvent,
-    type SetStateAction,
 } from "react"
 
-import type { Product } from "./types"
+import { useAuth } from "../auth/AuthContext"
+import { getCategories } from "../categories/categories.api"
+import {
+    createProduct,
+    deactivateProduct,
+    getProducts,
+    updateProduct,
+} from "./products.api"
 
-type ProductsPageProps = {
-    products: Product[]
-    setProducts: Dispatch<SetStateAction<Product[]>>
+import type { Category } from "../categories/types"
+import type { ProductRecord } from "./types"
+
+type ProductFormValues = {
+    name: string
+    sku: string
+    barcode: string
+    description: string
+    price: string
+    categoryId: string
+    isFavorite: boolean
 }
 
-const initialFormValues = {
+const initialFormValues: ProductFormValues = {
     name: "",
-    category: "",
+    sku: "",
+    barcode: "",
+    description: "",
     price: "",
-    quantity: "",
-    expirationDate: "",
+    categoryId: "",
+    isFavorite: false,
 }
 
-const ProductsPage = ({
-                          products,
-                          setProducts,
-                      }: ProductsPageProps) => {
-    const [isFormOpen, setIsFormOpen] = useState(false)
+const getErrorMessage = (
+    error: unknown
+): string => {
+    return error instanceof Error
+        ? error.message
+        : "Something went wrong"
+}
+
+const ProductsPage = () => {
+    const { accessToken, user } = useAuth()
+
+    const [products, setProducts] =
+        useState<ProductRecord[]>([])
+
+    const [categories, setCategories] =
+        useState<Category[]>([])
 
     const [formValues, setFormValues] =
-        useState(initialFormValues)
+        useState<ProductFormValues>(
+            initialFormValues
+        )
 
     const [editingProductId, setEditingProductId] =
         useState<string | null>(null)
 
+    const [isFormOpen, setIsFormOpen] =
+        useState(false)
+
+    const [isLoading, setIsLoading] =
+        useState(true)
+
+    const [isSubmitting, setIsSubmitting] =
+        useState(false)
+
+    const [error, setError] = useState("")
+
+    const canManageProducts =
+        user?.role === "admin" ||
+        user?.role === "editor"
+
+    const refreshProducts =
+        async (): Promise<void> => {
+            if (!accessToken) {
+                return
+            }
+
+            const productData =
+                await getProducts(accessToken)
+
+            setProducts(productData)
+        }
+
+    useEffect(() => {
+        if (!accessToken) {
+            return
+        }
+
+        let isActive = true
+
+        const loadData =
+            async (): Promise<void> => {
+                setIsLoading(true)
+                setError("")
+
+                try {
+                    const [
+                        productData,
+                        categoryData,
+                    ] = await Promise.all([
+                        getProducts(accessToken),
+                        getCategories(accessToken),
+                    ])
+
+                    if (isActive) {
+                        setProducts(productData)
+                        setCategories(categoryData)
+                    }
+                } catch (loadError) {
+                    if (isActive) {
+                        setError(
+                            getErrorMessage(
+                                loadError
+                            )
+                        )
+                    }
+                } finally {
+                    if (isActive) {
+                        setIsLoading(false)
+                    }
+                }
+            }
+
+        void loadData()
+
+        return () => {
+            isActive = false
+        }
+    }, [accessToken])
+
     const handleOpenAddForm = () => {
         setEditingProductId(null)
         setFormValues(initialFormValues)
+        setError("")
         setIsFormOpen(true)
     }
 
-    const handleEditClick = (product: Product) => {
-        setEditingProductId(product.id)
+    const handleEditClick = (
+        product: ProductRecord
+    ) => {
+        setEditingProductId(product._id)
 
         setFormValues({
             name: product.name,
-            category: product.category,
+            sku: product.sku,
+            barcode: product.barcode ?? "",
+            description:
+                product.description ?? "",
             price: product.price.toString(),
-            quantity: product.quantity.toString(),
-            expirationDate: product.expirationDate,
+            categoryId:
+            product.categoryId._id,
+            isFavorite: product.isFavorite,
         })
 
+        setError("")
         setIsFormOpen(true)
     }
 
     const handleChange = (
-        event: ChangeEvent<HTMLInputElement>
+        event: ChangeEvent<
+            | HTMLInputElement
+            | HTMLTextAreaElement
+            | HTMLSelectElement
+        >
     ) => {
         const { name, value } = event.target
 
-        setFormValues((prevState) => {
-            return {
-                ...prevState,
-                [name]: value,
-            }
-        })
+        setFormValues((previousValues) => ({
+            ...previousValues,
+            [name]: value,
+        }))
+    }
+
+    const handleFavoriteChange = (
+        event: ChangeEvent<HTMLInputElement>
+    ) => {
+        setFormValues((previousValues) => ({
+            ...previousValues,
+            isFavorite: event.target.checked,
+        }))
     }
 
     const handleCloseForm = () => {
         setFormValues(initialFormValues)
         setEditingProductId(null)
         setIsFormOpen(false)
+        setError("")
     }
 
-    const handleSubmit = (
+    const handleSubmit = async (
         event: FormEvent<HTMLFormElement>
-    ) => {
+    ): Promise<void> => {
         event.preventDefault()
 
-        const productValues = {
-            name: formValues.name,
-            category: formValues.category,
-            price: Number(formValues.price),
-            quantity: Number(formValues.quantity),
-            expirationDate: formValues.expirationDate,
+        if (!accessToken) {
+            setError(
+                "Authentication is required"
+            )
+            return
         }
 
-        if (editingProductId !== null) {
-            setProducts((prevState) => {
-                return prevState.map((product) => {
-                    if (product.id === editingProductId) {
-                        return {
-                            ...product,
-                            ...productValues,
-                        }
-                    }
+        setIsSubmitting(true)
+        setError("")
 
-                    return product
-                })
-            })
-        } else {
-            const newProduct: Product = {
-                id: crypto.randomUUID(),
-                ...productValues,
+        const input = {
+            name: formValues.name.trim(),
+            sku: formValues.sku
+                .trim()
+                .toUpperCase(),
+            barcode:
+                formValues.barcode.trim() ||
+                undefined,
+            description:
+                formValues.description.trim() ||
+                undefined,
+            price: Number(formValues.price),
+            categoryId: formValues.categoryId,
+            isFavorite:
+            formValues.isFavorite,
+        }
+
+        try {
+            if (editingProductId) {
+                await updateProduct(
+                    accessToken,
+                    editingProductId,
+                    input
+                )
+            } else {
+                await createProduct(
+                    accessToken,
+                    input
+                )
             }
 
-            setProducts((prevState) => {
-                return [...prevState, newProduct]
-            })
+            await refreshProducts()
+            handleCloseForm()
+        } catch (submitError) {
+            setError(
+                getErrorMessage(submitError)
+            )
+        } finally {
+            setIsSubmitting(false)
         }
-
-        handleCloseForm()
     }
 
-    const handleDelete = (id: string) => {
-        setProducts((prevState) => {
-            return prevState.filter((product) => {
-                return product.id !== id
-            })
-        })
+    const handleDelete = async (
+        product: ProductRecord
+    ): Promise<void> => {
+        if (!accessToken) {
+            return
+        }
+
+        const shouldDelete = window.confirm(
+            `Deactivate ${product.name}?`
+        )
+
+        if (!shouldDelete) {
+            return
+        }
+
+        setError("")
+
+        try {
+            await deactivateProduct(
+                accessToken,
+                product._id
+            )
+
+            await refreshProducts()
+        } catch (deleteError) {
+            setError(
+                getErrorMessage(deleteError)
+            )
+        }
     }
 
     return (
@@ -130,19 +298,27 @@ const ProductsPage = ({
                     </h1>
 
                     <p className="mt-1 text-sm font-bold text-gray-600">
-                        Manage Your Store Products
+                        Manage your store products
                     </p>
                 </div>
 
-                <button
-                    type="button"
-                    onClick={handleOpenAddForm}
-                    className="flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-white hover:bg-purple-700"
-                >
-                    <Plus className="h-5 w-5" />
-                    <span>Add Product</span>
-                </button>
+                {canManageProducts && (
+                    <button
+                        type="button"
+                        onClick={handleOpenAddForm}
+                        className="flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-white hover:bg-purple-700"
+                    >
+                        <Plus className="h-5 w-5" />
+                        <span>Add Product</span>
+                    </button>
+                )}
             </div>
+
+            {error && (
+                <p className="mb-6 rounded-lg bg-red-50 p-4 text-sm font-medium text-red-700">
+                    {error}
+                </p>
+            )}
 
             {isFormOpen && (
                 <form
@@ -150,7 +326,7 @@ const ProductsPage = ({
                     className="mb-6 rounded-xl border border-gray-200 bg-white p-6"
                 >
                     <h2 className="mb-4 text-lg font-bold text-gray-800">
-                        {editingProductId !== null
+                        {editingProductId
                             ? "Edit Product"
                             : "Add New Product"}
                     </h2>
@@ -167,23 +343,40 @@ const ProductsPage = ({
                                 value={formValues.name}
                                 onChange={handleChange}
                                 required
-                                placeholder="Product name"
+                                disabled={isSubmitting}
                                 className="rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-purple-500"
                             />
                         </label>
 
                         <label className="flex flex-col gap-1">
                             <span className="text-sm font-medium text-gray-700">
-                                Category
+                                SKU
                             </span>
 
                             <input
                                 type="text"
-                                name="category"
-                                value={formValues.category}
+                                name="sku"
+                                value={formValues.sku}
                                 onChange={handleChange}
                                 required
-                                placeholder="Product category"
+                                disabled={isSubmitting}
+                                className="rounded-lg border border-gray-300 px-3 py-2 uppercase outline-none focus:border-purple-500"
+                            />
+                        </label>
+
+                        <label className="flex flex-col gap-1">
+                            <span className="text-sm font-medium text-gray-700">
+                                Barcode
+                            </span>
+
+                            <input
+                                type="text"
+                                name="barcode"
+                                value={
+                                    formValues.barcode
+                                }
+                                onChange={handleChange}
+                                disabled={isSubmitting}
                                 className="rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-purple-500"
                             />
                         </label>
@@ -201,41 +394,82 @@ const ProductsPage = ({
                                 required
                                 min="0"
                                 step="0.01"
-                                placeholder="0.00"
+                                disabled={isSubmitting}
                                 className="rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-purple-500"
                             />
                         </label>
 
                         <label className="flex flex-col gap-1">
                             <span className="text-sm font-medium text-gray-700">
-                                Quantity
+                                Category
                             </span>
 
-                            <input
-                                type="number"
-                                name="quantity"
-                                value={formValues.quantity}
+                            <select
+                                name="categoryId"
+                                value={
+                                    formValues.categoryId
+                                }
                                 onChange={handleChange}
                                 required
-                                min="0"
-                                placeholder="0"
+                                disabled={isSubmitting}
+                                className="rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-purple-500"
+                            >
+                                <option value="">
+                                    Select category
+                                </option>
+
+                                {categories.map(
+                                    (category) => (
+                                        <option
+                                            key={
+                                                category._id
+                                            }
+                                            value={
+                                                category._id
+                                            }
+                                        >
+                                            {
+                                                category.name
+                                            }
+                                        </option>
+                                    )
+                                )}
+                            </select>
+                        </label>
+
+                        <label className="flex flex-col gap-1 md:col-span-2">
+                            <span className="text-sm font-medium text-gray-700">
+                                Description
+                            </span>
+
+                            <textarea
+                                name="description"
+                                value={
+                                    formValues.description
+                                }
+                                onChange={handleChange}
+                                disabled={isSubmitting}
+                                rows={3}
                                 className="rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-purple-500"
                             />
                         </label>
 
-                        <label className="flex flex-col gap-1">
-                            <span className="text-sm font-medium text-gray-700">
-                                Expiration date
-                            </span>
-
+                        <label className="flex items-center gap-2">
                             <input
-                                type="date"
-                                name="expirationDate"
-                                value={formValues.expirationDate}
-                                onChange={handleChange}
-                                required
-                                className="rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-purple-500"
+                                type="checkbox"
+                                checked={
+                                    formValues.isFavorite
+                                }
+                                onChange={
+                                    handleFavoriteChange
+                                }
+                                disabled={isSubmitting}
+                                className="h-4 w-4 accent-purple-600"
                             />
+
+                            <span className="text-sm font-medium text-gray-700">
+                                Favorite product
+                            </span>
                         </label>
                     </div>
 
@@ -243,6 +477,7 @@ const ProductsPage = ({
                         <button
                             type="button"
                             onClick={handleCloseForm}
+                            disabled={isSubmitting}
                             className="rounded-lg border border-gray-300 px-4 py-2 text-gray-700 hover:bg-gray-100"
                         >
                             Cancel
@@ -250,16 +485,22 @@ const ProductsPage = ({
 
                         <button
                             type="submit"
-                            className="flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-white hover:bg-purple-700"
+                            disabled={
+                                isSubmitting ||
+                                categories.length === 0
+                            }
+                            className="flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-white hover:bg-purple-700 disabled:cursor-not-allowed disabled:bg-purple-400"
                         >
-                            {editingProductId === null && (
+                            {!editingProductId && (
                                 <Plus className="h-5 w-5" />
                             )}
 
                             <span>
-                                {editingProductId !== null
-                                    ? "Update Product"
-                                    : "Save Product"}
+                                {isSubmitting
+                                    ? "Saving..."
+                                    : editingProductId
+                                        ? "Update Product"
+                                        : "Save Product"}
                             </span>
                         </button>
                     </div>
@@ -275,6 +516,10 @@ const ProductsPage = ({
                         </th>
 
                         <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-600">
+                            SKU
+                        </th>
+
+                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-600">
                             Category
                         </th>
 
@@ -283,24 +528,39 @@ const ProductsPage = ({
                         </th>
 
                         <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-600">
-                            Quantity
+                            Favorite
                         </th>
 
-                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-600">
-                            Expiration
-                        </th>
-
-                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-600">
-                            Actions
-                        </th>
+                        {canManageProducts && (
+                            <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-600">
+                                Actions
+                            </th>
+                        )}
                     </tr>
                     </thead>
 
                     <tbody>
-                    {products.length === 0 ? (
+                    {isLoading ? (
                         <tr>
                             <td
-                                colSpan={6}
+                                colSpan={
+                                    canManageProducts
+                                        ? 6
+                                        : 5
+                                }
+                                className="px-4 py-8 text-center text-sm text-gray-500"
+                            >
+                                Loading products...
+                            </td>
+                        </tr>
+                    ) : products.length === 0 ? (
+                        <tr>
+                            <td
+                                colSpan={
+                                    canManageProducts
+                                        ? 6
+                                        : 5
+                                }
                                 className="px-4 py-8 text-center text-sm text-gray-500"
                             >
                                 No products found
@@ -309,59 +569,78 @@ const ProductsPage = ({
                     ) : (
                         products.map((product) => (
                             <tr
-                                key={product.id}
+                                key={product._id}
                                 className="border-t border-gray-200"
                             >
-                                <td className="px-4 py-4 text-sm text-gray-700">
+                                <td className="px-4 py-4 text-sm font-medium text-gray-800">
                                     {product.name}
                                 </td>
 
                                 <td className="px-4 py-4 text-sm text-gray-700">
-                                    {product.category}
+                                    {product.sku}
                                 </td>
 
                                 <td className="px-4 py-4 text-sm text-gray-700">
-                                    €
-                                    {product.price.toFixed(2)}
+                                    {
+                                        product
+                                            .categoryId
+                                            .name
+                                    }
                                 </td>
 
                                 <td className="px-4 py-4 text-sm text-gray-700">
-                                    {product.quantity}
+                                    {product.price.toLocaleString(
+                                        "el-GR",
+                                        {
+                                            style:
+                                                "currency",
+                                            currency:
+                                                "EUR",
+                                        }
+                                    )}
                                 </td>
 
-                                <td className="px-4 py-4 text-sm text-gray-700">
-                                    {product.expirationDate}
+                                <td className="px-4 py-4">
+                                    <Heart
+                                        className={
+                                            product.isFavorite
+                                                ? "h-5 w-5 fill-purple-600 text-purple-600"
+                                                : "h-5 w-5 text-gray-400"
+                                        }
+                                    />
                                 </td>
 
-                                <td className="px-4 py-4 text-sm text-gray-700">
-                                    <div className="flex items-center gap-2">
-                                        <button
-                                            type="button"
-                                            onClick={() =>
-                                                handleEditClick(
-                                                    product
-                                                )
-                                            }
-                                            aria-label={`Edit ${product.name}`}
-                                            className="rounded-lg p-2 text-gray-500 hover:bg-purple-100 hover:text-purple-700"
-                                        >
-                                            <Pencil className="h-4 w-4" />
-                                        </button>
+                                {canManageProducts && (
+                                    <td className="px-4 py-4">
+                                        <div className="flex items-center gap-2">
+                                            <button
+                                                type="button"
+                                                onClick={() =>
+                                                    handleEditClick(
+                                                        product
+                                                    )
+                                                }
+                                                aria-label={`Edit ${product.name}`}
+                                                className="rounded-lg p-2 text-gray-500 hover:bg-purple-100 hover:text-purple-700"
+                                            >
+                                                <Pencil className="h-4 w-4" />
+                                            </button>
 
-                                        <button
-                                            type="button"
-                                            onClick={() =>
-                                                handleDelete(
-                                                    product.id
-                                                )
-                                            }
-                                            aria-label={`Delete ${product.name}`}
-                                            className="rounded-lg p-2 text-gray-500 hover:bg-red-100 hover:text-red-600"
-                                        >
-                                            <Trash2 className="h-4 w-4" />
-                                        </button>
-                                    </div>
-                                </td>
+                                            <button
+                                                type="button"
+                                                onClick={() =>
+                                                    void handleDelete(
+                                                        product
+                                                    )
+                                                }
+                                                aria-label={`Deactivate ${product.name}`}
+                                                className="rounded-lg p-2 text-gray-500 hover:bg-red-100 hover:text-red-600"
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </button>
+                                        </div>
+                                    </td>
+                                )}
                             </tr>
                         ))
                     )}
