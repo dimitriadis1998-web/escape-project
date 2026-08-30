@@ -93,11 +93,7 @@ function App() {
 
                 <Route
                     path="/inventory"
-                    element={
-                        <InventoryPage
-                            products={products}
-                        />
-                    }
+                    element={<InventoryPage />}
                 />
 
                 <Route
