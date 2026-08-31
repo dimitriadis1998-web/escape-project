@@ -5,7 +5,7 @@ import {
 
 import dashboardHero from "../../assets/images/dashboard-hero.png"
 
-import { useAuth } from "../auth/AuthContext"
+import { useAuth } from "../auth/useAuth"
 import { getProducts } from "../products/products.api"
 import { getInventoryBatches } from "../inventory/inventory.api"
 import { getDaysUntilExpiration } from "../../shared/utils/dateUtils"

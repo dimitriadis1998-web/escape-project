@@ -4,7 +4,7 @@ import {
     type ChangeEvent,
 } from "react"
 
-import { useAuth } from "../auth/AuthContext"
+import { useAuth } from "../auth/useAuth"
 import { getExpiringInventoryBatches } from "../inventory/inventory.api"
 import { getDaysUntilExpiration } from "../../shared/utils/dateUtils"
 

@@ -14,7 +14,7 @@ import {
     type FormEvent,
 } from "react"
 
-import { useAuth } from "../auth/AuthContext"
+import { useAuth } from "../auth/useAuth"
 import { getCategories } from "../categories/categories.api"
 
 import {
@@ -175,8 +175,8 @@ const ProductsPage = () => {
         useState("")
 
     const canManageProducts =
-        user?.role === "admin" ||
-        user?.role === "editor"
+        user?.role === "admin"
+
 
     const refreshProducts =
         useCallback(async (): Promise<void> => {

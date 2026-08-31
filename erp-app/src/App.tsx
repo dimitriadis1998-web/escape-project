@@ -12,7 +12,7 @@ import ExpirationsPage from "./features/expirations/ExpirationsPage"
 import UsersPage from "./features/users/UsersPage"
 import LoginPage from "./features/auth/LoginPage"
 import NotFoundPage from "./features/not-found/NotFoundPage"
-import { useAuth } from "./features/auth/AuthContext"
+import { useAuth } from "./features/auth/useAuth"
 
 function App() {
     const { user, logout } = useAuth()

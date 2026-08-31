@@ -1,6 +1,5 @@
 export type UserRole =
     | "admin"
-    | "editor"
     | "reader"
 
 export type LoginFormValues = {

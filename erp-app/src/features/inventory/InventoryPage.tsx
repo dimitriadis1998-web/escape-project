@@ -10,7 +10,7 @@ import {
     type FormEvent,
 } from "react"
 
-import { useAuth } from "../auth/AuthContext"
+import { useAuth } from "../auth/useAuth"
 import { getProducts } from "../products/products.api"
 import {
     createInventoryBatch,
@@ -121,8 +121,8 @@ const InventoryPage = () => {
     const [error, setError] = useState("")
 
     const canManageInventory =
-        user?.role === "admin" ||
-        user?.role === "editor"
+        user?.role === "admin"
+
 
     const totalQuantity = batches.reduce(
         (total, batch) => {

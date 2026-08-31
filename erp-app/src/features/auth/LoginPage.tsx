@@ -4,7 +4,7 @@ import {
     type FormEvent,
 } from "react"
 
-import { useAuth } from "./AuthContext"
+import { useAuth } from "./useAuth"
 
 import type { LoginFormValues } from "./types"
 
